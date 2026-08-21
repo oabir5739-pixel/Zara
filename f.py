@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import os
 import sqlite3
 import threading
@@ -75,7 +74,7 @@ PREMIUM_EMOJIS = {
     "live_broadcast": "6219940267626078011",
     "add_balance": "6219646698021463224",
     "bulk_update": "6084506256427456298",
-    "remove_money": "6068810023566317366",
+    "remove_money": "6068810023566317366",   # 📌 নতুন রিমুভ মানি বাটন ইমোজি
     "post_edit": "5435907392334215552",
     "button_edit": "5406683434124859552",
     "edit_service": "5269402556924180806",
@@ -177,17 +176,16 @@ def owner_has_premium():
 
 def premium_keyboard_button(text, emoji_key):
     emoji_id = PREMIUM_EMOJIS.get(emoji_key)
-    if owner_has_premium() and emoji_id:
+    if emoji_id:
         return KeyboardButton(text, icon_custom_emoji_id=emoji_id)
     return KeyboardButton(text)
 
-# 📌 ইনলাইন বাটনে প্রিমিয়াম ইমোজি আইডি যোগ করার আপডেট কোড
 def premium_inline_button(text, emoji_key, callback_data=None, url=None):
     kwargs = {}
     if callback_data is not None: kwargs["callback_data"] = callback_data
     if url is not None: kwargs["url"] = url
     emoji_id = PREMIUM_EMOJIS.get(emoji_key)
-    if owner_has_premium() and emoji_id:
+    if emoji_id:
         kwargs["icon_custom_emoji_id"] = emoji_id
     return InlineKeyboardButton(text, **kwargs)
 
@@ -423,6 +421,7 @@ def get_categories_markup():
     )
     return markup
 
+# 📌 অ্যাডমিন প্যানেল: এখানে 'Remove Money' বাটন যুক্ত করা হলো
 def get_admin_markup():
     markup = InlineKeyboardMarkup(row_width=1)
     markup.add(
@@ -433,7 +432,7 @@ def get_admin_markup():
         premium_inline_button("Recover Balance List (.txt)", "recover_balance", callback_data="admin_recover_balance_list"),
         premium_inline_button("Live Analysis & User Broadcast Message", "live_broadcast", callback_data="admin_live_broadcast"),
         premium_inline_button("Add Member Money Back", "add_balance", callback_data="admin_add_member_balance"),
-        premium_inline_button("Remove Money", "remove_money", callback_data="admin_remove_member_balance"),
+        premium_inline_button("Remove Money", "remove_money", callback_data="admin_remove_member_balance"), # 📌 নতুন রিমুভ মানি বাটন
         premium_inline_button("Update Back All Money Member", "bulk_update", callback_data="admin_bulk_money_update"),
         premium_inline_button("All Post Edit", "post_edit", callback_data="admin_all_post_edit"),
         premium_inline_button("All Button Edit", "button_edit", callback_data="admin_all_button_edit"),
@@ -767,6 +766,7 @@ def handle_callback(call):
         bot.send_message(call.message.chat.id, f"{pe('add_balance')} <b>Add Member Money Back</b>\n\nযে ইউজারের অ্যাকাউন্টে আগের টাকা ব্যাক দিতে চাচ্ছেন, তার সঠিক <b>User ID</b> চ্যাটে লিখে পাঠান:", parse_mode="HTML", reply_markup=markup)
         return
 
+    # 📌 নতুন রিমুভ মানি কলব্যাক হ্যান্ডলার
     elif call.data == "admin_remove_member_balance" and user_id == ADMIN_ID:
         conn.close()
         admin_states[user_id] = {"action": "waiting_member_uid_for_remove_money"}
@@ -1082,7 +1082,7 @@ def handle_callback(call):
         markup.add(premium_inline_button("Back", "back_button", callback_data=f"manage_stock_{cat_id}"))
         try: bot.delete_message(call.message.chat.id, call.message.message_id)
         except Exception: pass
-        bot.send_message(call.message.chat.id, f"{pe('box_package')} আপনি সিলেক্ট করেছেন: <b>{cat_name}</b>\n\nএখন নতুন স্টক ফাইল (.txt) সরাসরি এই চ্যাটে ফাইল হিসেবে আপলোড করে পাঠান:", parse_mode="HTML", reply_markup=markup)
+        bot.send_message(call.message.chat.id, f"{pe('box_package')} আপনি সিলেক্ট করেছেন: <b>{cat_name}</b>\n\nএখন নতুন স্টক ফাইল (.txt) সরাসরি এই চ্যাটে ফাইল হিসেবে আপলোড করে পাঠান।", parse_mode="HTML", reply_markup=markup)
         return
 
     # ----------------- Other Admin Panel Callbacks -----------------
@@ -1922,6 +1922,7 @@ def handle_all_messages_and_broadcast(message):
                 bot.reply_to(message, f"{pe('warn_icon')} ইউজার আইডি অথবা টাকার পরিমাণ সঠিক সংখ্যায় দিন। পুনরায় অ্যাডমিন প্যানেল থেকে চেষ্টা করুন।", parse_mode="HTML")
             return
 
+        # 📌 নতুন রিমুভ মানি - Step 1 (User ID রিসিভ করে বর্তমান ব্যালেন্স দেখাবে)
         elif action == "waiting_member_uid_for_remove_money":
             target_uid_str = text.strip()
             try:
@@ -1946,6 +1947,7 @@ def handle_all_messages_and_broadcast(message):
                 bot.reply_to(message, f"{pe('warn_icon')} দয়া করে সঠিক সংখ্যায় ইউজার আইডি দিন।", parse_mode="HTML")
             return
 
+        # 📌 নতুন রিমুভ মানি - Step 2 (নতুন ব্যালেন্স সেট করে দেওয়া)
         elif action == "waiting_member_amount_for_remove_money":
             target_uid = state_data["target_uid"]
             del admin_states[user_id]
