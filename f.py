@@ -14,7 +14,7 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
 # 🔑 টোকেন এবং অ্যাডমিন আইডি
-TOKEN = "8923417158:AAE9XQ2SgQ10KT31WSh9lwTTm2psQDb5i-Q"
+TOKEN = "8950372563:AAHDH5hPsjJfQknZAUFn9v5-W7jgWE3oMqc"
 ADMIN_ID = 7196917072
 
 FORCE_SUB_CHANNEL = "@BotAllUpdateServis"
