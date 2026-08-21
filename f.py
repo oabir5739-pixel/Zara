@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os
 import sqlite3
 import threading
@@ -176,10 +177,11 @@ def owner_has_premium():
 
 def premium_keyboard_button(text, emoji_key):
     emoji_id = PREMIUM_EMOJIS.get(emoji_key)
-    if emoji_id:
+    if owner_has_premium() and emoji_id:
         return KeyboardButton(text, icon_custom_emoji_id=emoji_id)
     return KeyboardButton(text)
 
+# 📌 এখানে শর্ত তুলে দিয়ে সরাসরি ইনলাইন বাটনে প্রিমিয়াম ইমোজি আইডি সেট করা হয়েছে
 def premium_inline_button(text, emoji_key, callback_data=None, url=None):
     kwargs = {}
     if callback_data is not None: kwargs["callback_data"] = callback_data
@@ -1082,7 +1084,7 @@ def handle_callback(call):
         markup.add(premium_inline_button("Back", "back_button", callback_data=f"manage_stock_{cat_id}"))
         try: bot.delete_message(call.message.chat.id, call.message.message_id)
         except Exception: pass
-        bot.send_message(call.message.chat.id, f"{pe('box_package')} আপনি সিলেক্ট করেছেন: <b>{cat_name}</b>\n\nএখন নতুন স্টক ফাইল (.txt) সরাসরি এই চ্যাটে ফাইল হিসেবে আপলোড করে পাঠান।", parse_mode="HTML", reply_markup=markup)
+        bot.send_message(call.message.chat.id, f"{pe('box_package')} আপনি সিলেক্ট করেছেন: <b>{cat_name}</b>\n\nএখন নতুন স্টক ফাইল (.txt) সরাসরি এই চ্যাটে ফাইল হিসেবে আপলোড করে পাঠান:", parse_mode="HTML", reply_markup=markup)
         return
 
     # ----------------- Other Admin Panel Callbacks -----------------
@@ -1922,7 +1924,6 @@ def handle_all_messages_and_broadcast(message):
                 bot.reply_to(message, f"{pe('warn_icon')} ইউজার আইডি অথবা টাকার পরিমাণ সঠিক সংখ্যায় দিন। পুনরায় অ্যাডমিন প্যানেল থেকে চেষ্টা করুন।", parse_mode="HTML")
             return
 
-        # 📌 নতুন রিমুভ মানি - Step 1 (User ID রিসিভ করে বর্তমান ব্যালেন্স দেখাবে)
         elif action == "waiting_member_uid_for_remove_money":
             target_uid_str = text.strip()
             try:
@@ -1947,7 +1948,6 @@ def handle_all_messages_and_broadcast(message):
                 bot.reply_to(message, f"{pe('warn_icon')} দয়া করে সঠিক সংখ্যায় ইউজার আইডি দিন।", parse_mode="HTML")
             return
 
-        # 📌 নতুন রিমুভ মানি - Step 2 (নতুন ব্যালেন্স সেট করে দেওয়া)
         elif action == "waiting_member_amount_for_remove_money":
             target_uid = state_data["target_uid"]
             del admin_states[user_id]
