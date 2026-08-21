@@ -181,10 +181,14 @@ def premium_keyboard_button(text, emoji_key):
         return KeyboardButton(text, icon_custom_emoji_id=emoji_id)
     return KeyboardButton(text)
 
+# 📌 ইনলাইন বাটনে প্রিমিয়াম ইমোজি আইডি যোগ করার আপডেট কোড
 def premium_inline_button(text, emoji_key, callback_data=None, url=None):
     kwargs = {}
     if callback_data is not None: kwargs["callback_data"] = callback_data
     if url is not None: kwargs["url"] = url
+    emoji_id = PREMIUM_EMOJIS.get(emoji_key)
+    if owner_has_premium() and emoji_id:
+        kwargs["icon_custom_emoji_id"] = emoji_id
     return InlineKeyboardButton(text, **kwargs)
 
 USER_LOG_FILE = "auto_member_count_user.txt"
@@ -213,27 +217,27 @@ def check_user_subscription(user_id):
 def get_force_sub_markup():
     markup = InlineKeyboardMarkup(row_width=1)
     markup.add(
-        premium_inline_button("🔗 Join Channel", "channel_join", url=f"https://t.me/BotAllUpdateServis"),
-        premium_inline_button("✅ Verify", "verify_tick", callback_data="verify_subscription")
+        premium_inline_button("Join Channel", "channel_join", url=f"https://t.me/BotAllUpdateServis"),
+        premium_inline_button("Verify", "verify_tick", callback_data="verify_subscription")
     )
     return markup
 
 def get_deposit_amount_markup():
     markup = InlineKeyboardMarkup(row_width=2)
     markup.add(
-        premium_inline_button("💵 10 টাকা", "money_10", callback_data="depamt_10"),
-        premium_inline_button("💵 20 টাকা", "money_20", callback_data="depamt_20"),
-        premium_inline_button("💵 30 টাকা", "money_30", callback_data="depamt_30"),
-        premium_inline_button("💵 40 টাকা", "money_40", callback_data="depamt_40")
+        premium_inline_button("10 টাকা", "money_10", callback_data="depamt_10"),
+        premium_inline_button("20 টাকা", "money_20", callback_data="depamt_20"),
+        premium_inline_button("30 টাকা", "money_30", callback_data="depamt_30"),
+        premium_inline_button("40 টাকা", "money_40", callback_data="depamt_40")
     )
     return markup
 
 def get_payment_method_markup():
     markup = InlineKeyboardMarkup(row_width=1)
     markup.add(
-        premium_inline_button("💳 bKash", "bkash", callback_data="paymethod_bKash"),
-        premium_inline_button("💳 Nagad", "nagad", callback_data="paymethod_Nagad"),
-        premium_inline_button("💳 Rocket", "rocket", callback_data="paymethod_Rocket")
+        premium_inline_button("bKash", "bkash", callback_data="paymethod_bKash"),
+        premium_inline_button("Nagad", "nagad", callback_data="paymethod_Nagad"),
+        premium_inline_button("Rocket", "rocket", callback_data="paymethod_Rocket")
     )
     return markup
 
@@ -412,29 +416,29 @@ def main_menu_inline(user_id):
 def get_categories_markup():
     markup = InlineKeyboardMarkup(row_width=1)
     markup.add(
-        premium_inline_button("✉️ All Mail Service", "mail_cat", callback_data="group_mail"),
-        premium_inline_button("🌐 All Proxy Service", "proxy_cat", callback_data="group_proxy"),
-        premium_inline_button("💎 Telegram Premium Buy", "telegram_premium_cat", callback_data="special_cat_telegram_premium"),
-        premium_inline_button("🛡️ VPN Service", "vpn_service_cat", callback_data="special_cat_vpn_service")
+        premium_inline_button("All Mail Service", "mail_cat", callback_data="group_mail"),
+        premium_inline_button("All Proxy Service", "proxy_cat", callback_data="group_proxy"),
+        premium_inline_button("Telegram Premium Buy", "telegram_premium_cat", callback_data="special_cat_telegram_premium"),
+        premium_inline_button("VPN Service", "vpn_service_cat", callback_data="special_cat_vpn_service")
     )
     return markup
 
 def get_admin_markup():
     markup = InlineKeyboardMarkup(row_width=1)
     markup.add(
-        premium_inline_button("📊 Bot Analytics & Users", "analytics", callback_data="admin_analytics"),
-        premium_inline_button("📁 Auto Count Member ID", "member_count_file", callback_data="admin_auto_member_count"),
-        premium_inline_button("💰 All Member Balance List", "balance_list", callback_data="admin_member_balance_list"),
-        premium_inline_button("📥 Download Balance List TXT", "download_txt", callback_data="admin_download_balance_txt"),
-        premium_inline_button("🔄 Recover Balance List (.txt)", "recover_balance", callback_data="admin_recover_balance_list"),
-        premium_inline_button("📢 Live Analysis & User Broadcast Message", "live_broadcast", callback_data="admin_live_broadcast"),
-        premium_inline_button("➕ Add Member Money Back", "add_balance", callback_data="admin_add_member_balance"),
-        premium_inline_button("❌ Remove Money", "remove_money", callback_data="admin_remove_member_balance"),
-        premium_inline_button("🔄 Update Back All Money Member", "bulk_update", callback_data="admin_bulk_money_update"),
-        premium_inline_button("✏️ All Post Edit", "post_edit", callback_data="admin_all_post_edit"),
-        premium_inline_button("📝 All Button Edit", "button_edit", callback_data="admin_all_button_edit"),
-        premium_inline_button("⚙️ Edit Prices & Services", "edit_service", callback_data="admin_edit_services"),
-        premium_inline_button("📦 Manage Stock (Add/Remove)", "manage_stock", callback_data="admin_add_stock_menu")
+        premium_inline_button("Bot Analytics & Users", "analytics", callback_data="admin_analytics"),
+        premium_inline_button("Auto Count Member ID", "member_count_file", callback_data="admin_auto_member_count"),
+        premium_inline_button("All Member Balance List", "balance_list", callback_data="admin_member_balance_list"),
+        premium_inline_button("Download Balance List TXT", "download_txt", callback_data="admin_download_balance_txt"),
+        premium_inline_button("Recover Balance List (.txt)", "recover_balance", callback_data="admin_recover_balance_list"),
+        premium_inline_button("Live Analysis & User Broadcast Message", "live_broadcast", callback_data="admin_live_broadcast"),
+        premium_inline_button("Add Member Money Back", "add_balance", callback_data="admin_add_member_balance"),
+        premium_inline_button("Remove Money", "remove_money", callback_data="admin_remove_member_balance"),
+        premium_inline_button("Update Back All Money Member", "bulk_update", callback_data="admin_bulk_money_update"),
+        premium_inline_button("All Post Edit", "post_edit", callback_data="admin_all_post_edit"),
+        premium_inline_button("All Button Edit", "button_edit", callback_data="admin_all_button_edit"),
+        premium_inline_button("Edit Prices & Services", "edit_service", callback_data="admin_edit_services"),
+        premium_inline_button("Manage Stock (Add/Remove)", "manage_stock", callback_data="admin_add_stock_menu")
     )
     return markup
 
@@ -596,8 +600,8 @@ def process_purchase(chat_id, user_id, cat_id, qty):
 
     delivery_markup = InlineKeyboardMarkup(row_width=2)
     delivery_markup.add(
-        premium_inline_button("📂 Open Here", "open_here_btn", callback_data=f"show_open_{order_key}"),
-        premium_inline_button("📄 TXT File", "txt_file_btn", callback_data=f"show_txt_{order_key}")
+        premium_inline_button("Open Here", "open_here_btn", callback_data=f"show_open_{order_key}"),
+        premium_inline_button("TXT File", "txt_file_btn", callback_data=f"show_txt_{order_key}")
     )
 
     purchase_msg = (
@@ -747,7 +751,7 @@ def handle_callback(call):
         conn.close()
         admin_states[user_id] = {"action": "waiting_analysis_txt_for_broadcast"}
         markup = InlineKeyboardMarkup()
-        markup.add(premium_inline_button("🔙 Back", "back_button", callback_data="admin_main"))
+        markup.add(premium_inline_button("Back", "back_button", callback_data="admin_main"))
         try: bot.delete_message(call.message.chat.id, call.message.message_id)
         except Exception: pass
         bot.send_message(call.message.chat.id, f"{pe('loudspeaker')} <b>Live Analysis & User Broadcast Message</b>\n\nবট এনালাইসিস বা <code>auto_member_count_user.txt</code> ফাইলটি সরাসরি এখানে ফাইল আকারে পাঠান:", parse_mode="HTML", reply_markup=markup)
@@ -757,7 +761,7 @@ def handle_callback(call):
         conn.close()
         admin_states[user_id] = {"action": "waiting_member_uid_for_balance"}
         markup = InlineKeyboardMarkup()
-        markup.add(premium_inline_button("🔙 Back", "back_button", callback_data="admin_main"))
+        markup.add(premium_inline_button("Back", "back_button", callback_data="admin_main"))
         try: bot.delete_message(call.message.chat.id, call.message.message_id)
         except Exception: pass
         bot.send_message(call.message.chat.id, f"{pe('add_balance')} <b>Add Member Money Back</b>\n\nযে ইউজারের অ্যাকাউন্টে আগের টাকা ব্যাক দিতে চাচ্ছেন, তার সঠিক <b>User ID</b> চ্যাটে লিখে পাঠান:", parse_mode="HTML", reply_markup=markup)
@@ -767,7 +771,7 @@ def handle_callback(call):
         conn.close()
         admin_states[user_id] = {"action": "waiting_member_uid_for_remove_money"}
         markup = InlineKeyboardMarkup()
-        markup.add(premium_inline_button("🔙 Back", "back_button", callback_data="admin_main"))
+        markup.add(premium_inline_button("Back", "back_button", callback_data="admin_main"))
         try: bot.delete_message(call.message.chat.id, call.message.message_id)
         except Exception: pass
         bot.send_message(call.message.chat.id, f"{pe('remove_money')} <b>Remove Money (Balance Adjust)</b>\n\nযে ইউজারের অ্যাকাউন্ট থেকে টাকা কাট বা এডিট করতে চান, তার সঠিক <b>User ID</b> চ্যাটে লিখে পাঠান:", parse_mode="HTML", reply_markup=markup)
@@ -777,7 +781,7 @@ def handle_callback(call):
         conn.close()
         admin_states[user_id] = {"action": "waiting_bulk_money_data"}
         markup = InlineKeyboardMarkup()
-        markup.add(premium_inline_button("🔙 Back", "back_button", callback_data="admin_main"))
+        markup.add(premium_inline_button("Back", "back_button", callback_data="admin_main"))
         try: bot.delete_message(call.message.chat.id, call.message.message_id)
         except Exception: pass
         bot.send_message(call.message.chat.id, f"{pe('bulk_update')} <b>Update Back All Money Member (Bulk Update)</b>\n\nআপনার আগের ডাউনলোড করা <code>all_member_balance_list.txt</code> ফাইলটি এখানে সরাসরি আপলোড করুন:", parse_mode="HTML", reply_markup=markup)
@@ -800,8 +804,9 @@ def handle_callback(call):
             sub_cur.execute("SELECT COUNT(*) FROM stock WHERE cat_id = ?", (cat_id,))
             stock_count = sub_cur.fetchone()[0]
             sub_conn.close()
-            markup.add(premium_inline_button(f"✉️ {name} - ৳{price} (Stock: {stock_count})", "mail_item", callback_data=f"buy_{cat_id}"))
-        markup.add(premium_inline_button("🔙 Back", "back_button", callback_data="all_services"))
+            em_key = "mail_item" if has_em else None
+            markup.add(premium_inline_button(f"{name} - ৳{price} (Stock: {stock_count})", em_key, callback_data=f"buy_{cat_id}"))
+        markup.add(premium_inline_button("Back", "back_button", callback_data="all_services"))
 
         bot.edit_message_text(f"{pe('mail_cat')} <b>All Mail Services</b> {pe('mail_cat')}\n\nনিচের মেইলগুলো থেকে আপনার পছন্দমতো সিলেক্ট করুন:", call.message.chat.id, call.message.message_id, parse_mode="HTML", reply_markup=markup)
 
@@ -817,8 +822,9 @@ def handle_callback(call):
             sub_cur.execute("SELECT COUNT(*) FROM stock WHERE cat_id = ?", (cat_id,))
             stock_count = sub_cur.fetchone()[0]
             sub_conn.close()
-            markup.add(premium_inline_button(f"🌐 {name} - ৳{price} (Stock: {stock_count})", "proxy_item", callback_data=f"buy_{cat_id}"))
-        markup.add(premium_inline_button("🔙 Back", "back_button", callback_data="all_services"))
+            em_key = "proxy_item" if has_em else None
+            markup.add(premium_inline_button(f"{name} - ৳{price} (Stock: {stock_count})", em_key, callback_data=f"buy_{cat_id}"))
+        markup.add(premium_inline_button("Back", "back_button", callback_data="all_services"))
 
         bot.edit_message_text(f"{pe('proxy_cat')} <b>All Proxy Services</b> {pe('proxy_cat')}\n\nনিচের প্রক্সিগুলো থেকে আপনার পছন্দমতো সিলেক্ট করুন:", call.message.chat.id, call.message.message_id, parse_mode="HTML", reply_markup=markup)
 
@@ -826,11 +832,11 @@ def handle_callback(call):
         conn.close()
         markup = InlineKeyboardMarkup(row_width=2)
         markup.add(
-            premium_inline_button("⏳ 3 Day", "vpn_service_cat", callback_data="vpn_dur_vpn_3d"),
-            premium_inline_button("⏳ 7 Day", "vpn_service_cat", callback_data="vpn_dur_vpn_7d"),
-            premium_inline_button("⏳ 9 Day", "vpn_service_cat", callback_data="vpn_dur_vpn_9d"),
-            premium_inline_button("⏳ 1 Month", "vpn_service_cat", callback_data="vpn_dur_vpn_1m"),
-            premium_inline_button("🔙 Back", "back_button", callback_data="all_services")
+            premium_inline_button("3 Day", "vpn_service_cat", callback_data="vpn_dur_vpn_3d"),
+            premium_inline_button("7 Day", "vpn_service_cat", callback_data="vpn_dur_vpn_7d"),
+            premium_inline_button("9 Day", "vpn_service_cat", callback_data="vpn_dur_vpn_9d"),
+            premium_inline_button("1 Month", "vpn_service_cat", callback_data="vpn_dur_vpn_1m"),
+            premium_inline_button("Back", "back_button", callback_data="all_services")
         )
         bot.edit_message_text(f"{pe('vpn_service_cat')} <b>VPN Service</b> {pe('vpn_service_cat')}\n\nআপনি কতদিনের জন্য VPN নিতে চাচ্ছেন মেয়াদের ক্যাটাগরি সিলেক্ট করুন:", call.message.chat.id, call.message.message_id, parse_mode="HTML", reply_markup=markup)
 
@@ -854,8 +860,9 @@ def handle_callback(call):
 
         markup = InlineKeyboardMarkup(row_width=1)
         for sub_id, sub_name, price, has_em in sub_items:
-            markup.add(premium_inline_button(f"🛡️ {sub_name} - ৳{price}", "vpn_service_cat", callback_data=f"subbuy_{sub_id}"))
-        markup.add(premium_inline_button("🔙 Back", "back_button", callback_data="special_cat_vpn_service"))
+            em_key = get_vpn_emoji_key(sub_name) if has_em else None
+            markup.add(premium_inline_button(f"{sub_name} - ৳{price}", em_key, callback_data=f"subbuy_{sub_id}"))
+        markup.add(premium_inline_button("Back", "back_button", callback_data="special_cat_vpn_service"))
 
         bot.edit_message_text(f"{pe('vpn_service_cat')} <b>VPN Packages</b>\n\n{dynamic_heading}", call.message.chat.id, call.message.message_id, parse_mode="HTML", reply_markup=markup)
 
@@ -866,8 +873,9 @@ def handle_callback(call):
 
         markup = InlineKeyboardMarkup(row_width=1)
         for sub_id, sub_name, price, has_em in sub_items:
-            markup.add(premium_inline_button(f"💎 {sub_name} - ৳{price}", "telegram_premium_cat", callback_data=f"subbuy_{sub_id}"))
-        markup.add(premium_inline_button("🔙 Back", "back_button", callback_data="all_services"))
+            em_key = "telegram_premium_cat" if has_em else None
+            markup.add(premium_inline_button(f"{sub_name} - ৳{price}", em_key, callback_data=f"subbuy_{sub_id}"))
+        markup.add(premium_inline_button("Back", "back_button", callback_data="all_services"))
 
         bot.edit_message_text(f"{pe('telegram_premium_cat')} <b>Telegram Premium Buy</b> {pe('telegram_premium_cat')}\n\nনিচের প্যাকেজগুলো থেকে আপনার পছন্দমতো সিলেক্ট করুন:", call.message.chat.id, call.message.message_id, parse_mode="HTML", reply_markup=markup)
 
@@ -897,7 +905,8 @@ def handle_callback(call):
         try: bot.delete_message(call.message.chat.id, call.message.message_id)
         except Exception: pass
 
-        bot.send_message(call.message.chat.id, f"✨ আপনি সিলেক্ট করেছেন: <b>{sub_name}</b> (মূল্য: ৳{price}) ✨\n\n{pe('list_point')} এখন যে আইডিতে সার্ভিস নিতে চাচ্ছেন, সেটির সঠিক <b>Telegram Username</b> বা প্রোফাইল আইডি চ্যাটে লিখে পাঠান:", parse_mode="HTML")
+        emoji_k = "telegram_premium_cat" if "telegram" in cat_id else get_vpn_emoji_key(sub_name)
+        bot.send_message(call.message.chat.id, f"{pe(emoji_k)} আপনি সিলেক্ট করেছেন: <b>{sub_name}</b> (মূল্য: ৳{price}) {pe(emoji_k)}\n\n{pe('list_point')} এখন যে আইডিতে সার্ভিস নিতে চাচ্ছেন, সেটির সঠিক <b>Telegram Username</b> বা প্রোফাইল আইডি চ্যাটে লিখে পাঠান:", parse_mode="HTML")
         return
 
     elif call.data.startswith("buy_"):
@@ -918,10 +927,10 @@ def handle_callback(call):
         user_temp_deposit[user_id] = {"step": "waiting_custom_qty", "cat_id": cat_id}
         markup = InlineKeyboardMarkup(row_width=2)
         markup.add(
-            premium_inline_button("📦 1 Pcs", "qty_select", callback_data=f"qty_{cat_id}_1"),
-            premium_inline_button("📦 5 Pcs", "qty_select", callback_data=f"qty_{cat_id}_5"),
-            premium_inline_button("📦 10 Pcs", "qty_select", callback_data=f"qty_{cat_id}_10"),
-            premium_inline_button("🔙 Back", "back_button", callback_data=back_target)
+            premium_inline_button("1 Pcs", "qty_select", callback_data=f"qty_{cat_id}_1"),
+            premium_inline_button("5 Pcs", "qty_select", callback_data=f"qty_{cat_id}_5"),
+            premium_inline_button("10 Pcs", "qty_select", callback_data=f"qty_{cat_id}_10"),
+            premium_inline_button("Back", "back_button", callback_data=back_target)
         )
         msg_text = f"{pe('box_package')} <b>{cat[0]}</b>\n{pe('money_spent')} Price: ৳{cat[1]}\nStock: {stock_count} Pcs\n\nSelect quantity:\n{pe('list_point')} অধিক নিতে চাইলে নিচে চ্যাটে কাঙ্ক্ষিত পিস সংখ্যা লিখে পাঠান।"
         try: bot.edit_message_text(msg_text, call.message.chat.id, call.message.message_id, parse_mode="HTML", reply_markup=markup)
@@ -987,9 +996,9 @@ def handle_callback(call):
             sub_cur.execute("SELECT COUNT(*) FROM stock WHERE cat_id = ?", (cat_id,))
             s_count = sub_cur.fetchone()[0]
             sub_conn.close()
-            markup.add(premium_inline_button(f"📦 {name} (Stock: {s_count} Pcs)", "manage_stock", callback_data=f"manage_stock_{cat_id}"))
+            markup.add(premium_inline_button(f"{name} (Stock: {s_count} Pcs)", "manage_stock", callback_data=f"manage_stock_{cat_id}"))
         
-        markup.add(premium_inline_button("🔙 Back", "back_button", callback_data="admin_main"))
+        markup.add(premium_inline_button("Back", "back_button", callback_data="admin_main"))
         try: bot.delete_message(call.message.chat.id, call.message.message_id)
         except Exception: pass
         bot.send_message(call.message.chat.id, f"{pe('box_package')} <b>Stock Management:</b>\nযে সার্ভিসের স্টক ম্যানেজ করতে চান তা সিলেক্ট করুন:", parse_mode="HTML", reply_markup=markup)
@@ -1007,10 +1016,10 @@ def handle_callback(call):
 
         markup = InlineKeyboardMarkup(row_width=1)
         markup.add(
-            premium_inline_button("📥 Add New Stock File (.txt)", "add_balance", callback_data=f"select_stock_{cat_id}"),
-            premium_inline_button("📤 Download Current Stock (.txt)", "download_txt", callback_data=f"download_stock_{cat_id}"),
-            premium_inline_button(f"🗑️ Remove All Stock ({stock_count} Pcs)", "delete_trash", callback_data=f"clear_stock_{cat_id}"),
-            premium_inline_button("🔙 Back", "back_button", callback_data="admin_add_stock_menu")
+            premium_inline_button("Add New Stock File (.txt)", "add_balance", callback_data=f"select_stock_{cat_id}"),
+            premium_inline_button("Download Current Stock (.txt)", "download_txt", callback_data=f"download_stock_{cat_id}"),
+            premium_inline_button(f"Remove All Stock ({stock_count} Pcs)", "delete_trash", callback_data=f"clear_stock_{cat_id}"),
+            premium_inline_button("Back", "back_button", callback_data="admin_add_stock_menu")
         )
         try: bot.delete_message(call.message.chat.id, call.message.message_id)
         except Exception: pass
@@ -1054,9 +1063,9 @@ def handle_callback(call):
         for cid, name in categories:
             sub_cur.execute("SELECT COUNT(*) FROM stock WHERE cat_id = ?", (cid,))
             s_count = sub_cur.fetchone()[0]
-            markup.add(premium_inline_button(f"📦 {name} (Stock: {s_count} Pcs)", "manage_stock", callback_data=f"manage_stock_{cid}"))
+            markup.add(premium_inline_button(f"{name} (Stock: {s_count} Pcs)", "manage_stock", callback_data=f"manage_stock_{cid}"))
         sub_conn.close()
-        markup.add(premium_inline_button("🔙 Back", "back_button", callback_data="admin_main"))
+        markup.add(premium_inline_button("Back", "back_button", callback_data="admin_main"))
 
         try: bot.delete_message(call.message.chat.id, call.message.message_id)
         except Exception: pass
@@ -1070,7 +1079,7 @@ def handle_callback(call):
         cat_name = cursor.fetchone()[0]
         conn.close()
         markup = InlineKeyboardMarkup()
-        markup.add(premium_inline_button("🔙 Back", "back_button", callback_data=f"manage_stock_{cat_id}"))
+        markup.add(premium_inline_button("Back", "back_button", callback_data=f"manage_stock_{cat_id}"))
         try: bot.delete_message(call.message.chat.id, call.message.message_id)
         except Exception: pass
         bot.send_message(call.message.chat.id, f"{pe('box_package')} আপনি সিলেক্ট করেছেন: <b>{cat_name}</b>\n\nএখন নতুন স্টক ফাইল (.txt) সরাসরি এই চ্যাটে ফাইল হিসেবে আপলোড করে পাঠান:", parse_mode="HTML", reply_markup=markup)
@@ -1099,9 +1108,9 @@ def handle_callback(call):
 
         markup = InlineKeyboardMarkup()
         markup.add(
-            premium_inline_button("📥 Download Bot Analysis TXT File", "download_txt", callback_data="admin_download_analytics_txt"),
-            premium_inline_button("🔄 Refresh Live Data", "refresh_data", callback_data="admin_analytics"),
-            premium_inline_button("🔙 Back", "back_button", callback_data="admin_main")
+            premium_inline_button("Download Bot Analysis TXT File", "download_txt", callback_data="admin_download_analytics_txt"),
+            premium_inline_button("Refresh Live Data", "refresh_data", callback_data="admin_analytics"),
+            premium_inline_button("Back", "back_button", callback_data="admin_main")
         )
         try: bot.edit_message_text(analytics_text, call.message.chat.id, call.message.message_id, parse_mode="HTML", reply_markup=markup)
         except Exception: pass
@@ -1143,9 +1152,9 @@ def handle_callback(call):
 
         markup = InlineKeyboardMarkup(row_width=1)
         markup.add(
-            premium_inline_button("📥 Download Balance List TXT", "download_txt", callback_data="admin_download_balance_txt"),
-            premium_inline_button("🔄 Recover Balance List (.txt)", "recover_balance", callback_data="admin_recover_balance_list"),
-            premium_inline_button("🔙 Back", "back_button", callback_data="admin_main")
+            premium_inline_button("Download Balance List TXT", "download_txt", callback_data="admin_download_balance_txt"),
+            premium_inline_button("Recover Balance List (.txt)", "recover_balance", callback_data="admin_recover_balance_list"),
+            premium_inline_button("Back", "back_button", callback_data="admin_main")
         )
         try: bot.edit_message_text(list_text, call.message.chat.id, call.message.message_id, parse_mode="HTML", reply_markup=markup)
         except Exception: pass
@@ -1175,7 +1184,7 @@ def handle_callback(call):
         conn.close()
         admin_states[user_id] = {"action": "waiting_recover_balance_txt"}
         markup = InlineKeyboardMarkup()
-        markup.add(premium_inline_button("🔙 Back", "back_button", callback_data="admin_main"))
+        markup.add(premium_inline_button("Back", "back_button", callback_data="admin_main"))
         try: bot.delete_message(call.message.chat.id, call.message.message_id)
         except Exception: pass
         bot.send_message(call.message.chat.id, f"{pe('recover_balance')} <b>Recover Balance List (.txt)</b>\n\nপূর্বে ডাউনলোড করা <code>all_member_balance_list.txt</code> ফাইলটি এখানে আপলোড করুন।", parse_mode="HTML", reply_markup=markup)
@@ -1185,11 +1194,11 @@ def handle_callback(call):
         conn.close()
         markup = InlineKeyboardMarkup(row_width=1)
         markup.add(
-            premium_inline_button("1️⃣ Edit Welcome Post", "post_edit", callback_data="edit_post_welcome_msg"),
-            premium_inline_button("2️⃣ Edit Channel Not Joined Warning", "post_edit", callback_data="edit_post_not_joined_msg"),
-            premium_inline_button("3️⃣ Edit Support Text", "post_edit", callback_data="edit_post_support_msg"),
-            premium_inline_button("4️⃣ Edit Deposit Information Text", "post_edit", callback_data="edit_post_deposit_info_msg"),
-            premium_inline_button("🔙 Back to Admin", "back_button", callback_data="admin_main")
+            premium_inline_button("1. Edit Welcome Post", "post_edit", callback_data="edit_post_welcome_msg"),
+            premium_inline_button("2. Edit Channel Not Joined Warning", "post_edit", callback_data="edit_post_not_joined_msg"),
+            premium_inline_button("3. Edit Support Text", "post_edit", callback_data="edit_post_support_msg"),
+            premium_inline_button("4. Edit Deposit Information Text", "post_edit", callback_data="edit_post_deposit_info_msg"),
+            premium_inline_button("Back to Admin", "back_button", callback_data="admin_main")
         )
         try: bot.delete_message(call.message.chat.id, call.message.message_id)
         except Exception: pass
@@ -1202,7 +1211,7 @@ def handle_callback(call):
         admin_states[user_id] = {"action": "waiting_generic_post_update", "post_key": post_key}
         current_text = get_setting_msg(post_key, "খালি")
         markup = InlineKeyboardMarkup()
-        markup.add(premium_inline_button("🔙 Back", "back_button", callback_data="admin_all_post_edit"))
+        markup.add(premium_inline_button("Back", "back_button", callback_data="admin_all_post_edit"))
         try: bot.delete_message(call.message.chat.id, call.message.message_id)
         except Exception: pass
         bot.send_message(call.message.chat.id, f"{pe('post_edit')} <b>Editing Post:</b> <code>{post_key}</code>\n\n<b>বর্তমান লেখা:</b>\n------------------\n{current_text}\n------------------\n\nনতুন লেখাটি পাঠান:", parse_mode="HTML", reply_markup=markup)
@@ -1221,7 +1230,7 @@ def handle_callback(call):
             markup.add(InlineKeyboardButton("--- Sub Packages / VPNs ---", callback_data="ignore"))
             for sid, sname in sub_services:
                 markup.add(premium_inline_button(sname, "edit_pencil", callback_data=f"editbtn_sub_{sid}"))
-        markup.add(premium_inline_button("🔙 Back to Admin", "back_button", callback_data="admin_main"))
+        markup.add(premium_inline_button("Back to Admin", "back_button", callback_data="admin_main"))
         try: bot.delete_message(call.message.chat.id, call.message.message_id)
         except Exception: pass
         bot.send_message(call.message.chat.id, f"{pe('button_edit')} <b>All Button Edit</b>\n\nযেই বাটনটি এডিট করতে চান সিলেক্ট করুন:", parse_mode="HTML", reply_markup=markup)
@@ -1232,7 +1241,7 @@ def handle_callback(call):
         conn.close()
         admin_states[user_id] = {"action": "waiting_generic_btn_update", "btn_type": btn_type, "btn_id": btn_id}
         markup = InlineKeyboardMarkup()
-        markup.add(premium_inline_button("🔙 Back", "back_button", callback_data="admin_all_button_edit"))
+        markup.add(premium_inline_button("Back", "back_button", callback_data="admin_all_button_edit"))
         try: bot.delete_message(call.message.chat.id, call.message.message_id)
         except Exception: pass
         bot.send_message(call.message.chat.id, f"{pe('edit_pencil')} এই বাটনটির জন্য নতুন <b>নাম (Text)</b> লিখে পাঠান:", parse_mode="HTML", reply_markup=markup)
@@ -1245,8 +1254,8 @@ def handle_callback(call):
         markup = InlineKeyboardMarkup(row_width=1)
         
         markup.add(
-            premium_inline_button("✉️ Manage Sub-Buttons: All Mail Service", "edit_service", callback_data="editsubs_group_mail"),
-            premium_inline_button("🌐 Manage Sub-Buttons: All Proxy Service", "edit_service", callback_data="editsubs_group_proxy")
+            premium_inline_button("Manage Sub-Buttons: All Mail Service", "edit_service", callback_data="editsubs_group_mail"),
+            premium_inline_button("Manage Sub-Buttons: All Proxy Service", "edit_service", callback_data="editsubs_group_proxy")
         )
         
         special_ids = ["telegram_premium", "vpn_service"]
@@ -1260,19 +1269,19 @@ def handle_callback(call):
             stock_count = sub_cursor.fetchone()[0]
             sub_conn.close()
             markup.add(
-                premium_inline_button(f"⚙️ {name} | ৳{price} | Stock: {stock_count}", "edit_service", callback_data=f"editcat_{cat_id}"),
-                premium_inline_button(f"🗑️ Delete {name}", "delete_trash", callback_data=f"confirm_del_{cat_id}")
+                premium_inline_button(f"{name} | ৳{price} | Stock: {stock_count}", "edit_service", callback_data=f"editcat_{cat_id}"),
+                premium_inline_button(f"Delete {name}", "delete_trash", callback_data=f"confirm_del_{cat_id}")
             )
             
         for cat_id, name, price in special_cats:
             markup.add(
-                premium_inline_button(f"⚙️ Manage Sub-Buttons: {name}", "edit_service", callback_data=f"editsubs_{cat_id}"),
-                premium_inline_button(f"🗑️ Delete {name}", "delete_trash", callback_data=f"confirm_del_{cat_id}")
+                premium_inline_button(f"Manage Sub-Buttons: {name}", "edit_service", callback_data=f"editsubs_{cat_id}"),
+                premium_inline_button(f"Delete {name}", "delete_trash", callback_data=f"confirm_del_{cat_id}")
             )
         
         markup.add(
-            premium_inline_button("➕ Add New Button / Service", "add_balance", callback_data="admin_add_new_btn"),
-            premium_inline_button("🔙 Back", "back_button", callback_data="admin_main")
+            premium_inline_button("Add New Button / Service", "add_balance", callback_data="admin_add_new_btn"),
+            premium_inline_button("Back", "back_button", callback_data="admin_main")
         )
         try: bot.delete_message(call.message.chat.id, call.message.message_id)
         except Exception: pass
@@ -1287,8 +1296,8 @@ def handle_callback(call):
 
         markup = InlineKeyboardMarkup(row_width=2)
         markup.add(
-            premium_inline_button("✅ Yes (Delete)", "approve_btn", callback_data=f"delcat_{cat_id}"),
-            premium_inline_button("❌ No (Cancel)", "reject_btn", callback_data="admin_edit_services")
+            premium_inline_button("Yes (Delete)", "approve_btn", callback_data=f"delcat_{cat_id}"),
+            premium_inline_button("No (Cancel)", "reject_btn", callback_data="admin_edit_services")
         )
         try: bot.delete_message(call.message.chat.id, call.message.message_id)
         except Exception: pass
@@ -1301,11 +1310,11 @@ def handle_callback(call):
             conn.close()
             markup = InlineKeyboardMarkup(row_width=2)
             markup.add(
-                premium_inline_button("⏳ Manage 3 Day", "edit_service", callback_data="editsubs_vpn_3d"),
-                premium_inline_button("⏳ Manage 7 Day", "edit_service", callback_data="editsubs_vpn_7d"),
-                premium_inline_button("⏳ Manage 9 Day", "edit_service", callback_data="editsubs_vpn_9d"),
-                premium_inline_button("⏳ Manage 1 Month", "edit_service", callback_data="editsubs_vpn_1m"),
-                premium_inline_button("🔙 Back", "back_button", callback_data="admin_edit_services")
+                premium_inline_button("Manage 3 Day", "edit_service", callback_data="editsubs_vpn_3d"),
+                premium_inline_button("Manage 7 Day", "edit_service", callback_data="editsubs_vpn_7d"),
+                premium_inline_button("Manage 9 Day", "edit_service", callback_data="editsubs_vpn_9d"),
+                premium_inline_button("Manage 1 Month", "edit_service", callback_data="editsubs_vpn_1m"),
+                premium_inline_button("Back", "back_button", callback_data="admin_edit_services")
             )
             try: bot.delete_message(call.message.chat.id, call.message.message_id)
             except Exception: pass
@@ -1321,13 +1330,13 @@ def handle_callback(call):
             markup = InlineKeyboardMarkup(row_width=1)
             for c_id, c_name, c_price in items:
                 markup.add(
-                    premium_inline_button(f"⚙️ Edit: {c_name} (৳{c_price})", "edit_service", callback_data=f"editcat_{c_id}"),
-                    premium_inline_button(f"🗑️ Delete: {c_name}", "delete_trash", callback_data=f"confirm_del_{c_id}")
+                    premium_inline_button(f"Edit: {c_name} (৳{c_price})", "edit_service", callback_data=f"editcat_{c_id}"),
+                    premium_inline_button(f"Delete: {c_name}", "delete_trash", callback_data=f"confirm_del_{c_id}")
                 )
             
             markup.add(
-                premium_inline_button("➕ Add New Service / Button", "add_balance", callback_data="admin_add_new_btn"),
-                premium_inline_button("🔙 Back", "back_button", callback_data="admin_edit_services")
+                premium_inline_button("Add New Service / Button", "add_balance", callback_data="admin_add_new_btn"),
+                premium_inline_button("Back", "back_button", callback_data="admin_edit_services")
             )
             try: bot.delete_message(call.message.chat.id, call.message.message_id)
             except Exception: pass
@@ -1340,11 +1349,11 @@ def handle_callback(call):
 
         markup = InlineKeyboardMarkup(row_width=1)
         for sub_id, sub_name, price in subs:
-            markup.add(premium_inline_button(f"🗑️ Delete: {sub_name} (৳{price})", "delete_trash", callback_data=f"delsub_{sub_id}_{cat_id}"))
+            markup.add(premium_inline_button(f"Delete: {sub_name} (৳{price})", "delete_trash", callback_data=f"delsub_{sub_id}_{cat_id}"))
         
         markup.add(
-            premium_inline_button("➕ Add New Package", "add_balance", callback_data=f"addsub_{cat_id}"),
-            premium_inline_button("🔙 Back", "back_button", callback_data="admin_edit_services")
+            premium_inline_button("Add New Package", "add_balance", callback_data=f"addsub_{cat_id}"),
+            premium_inline_button("Back", "back_button", callback_data="admin_edit_services")
         )
         try: bot.delete_message(call.message.chat.id, call.message.message_id)
         except Exception: pass
@@ -1364,7 +1373,7 @@ def handle_callback(call):
         conn.close()
         admin_states[user_id] = {"action": "adding_sub_item", "cat_id": cat_id}
         markup = InlineKeyboardMarkup()
-        markup.add(premium_inline_button("🔙 Back", "back_button", callback_data=f"editsubs_{cat_id}"))
+        markup.add(premium_inline_button("Back", "back_button", callback_data=f"editsubs_{cat_id}"))
         try: bot.delete_message(call.message.chat.id, call.message.message_id)
         except Exception: pass
         bot.send_message(call.message.chat.id, f"{pe('add_balance')} নতুন প্যাকেজের নাম এবং দাম লিখে পাঠান:\n<code>[Package Name] [Price]</code>", parse_mode="HTML", reply_markup=markup)
@@ -1376,7 +1385,7 @@ def handle_callback(call):
         conn.close()
         admin_states[user_id] = {"action": "editing_cat", "cat_id": cat_id}
         markup = InlineKeyboardMarkup()
-        markup.add(premium_inline_button("🔙 Back", "back_button", callback_data="admin_edit_services"))
+        markup.add(premium_inline_button("Back", "back_button", callback_data="admin_edit_services"))
         edit_prompt = f"{pe('edit_pencil')} এডিট করছেন: <b>{cat[0]}</b> (বর্তমান মূল্য: ৳{cat[1]})\n\nনতুন নাম এবং রেট লিখে পাঠান।\n<b>ফরম্যাট:</b> <code>[নতুন নাম] [রেট]</code>"
         try: bot.delete_message(call.message.chat.id, call.message.message_id)
         except Exception: pass
@@ -1395,7 +1404,7 @@ def handle_callback(call):
         conn.close()
         admin_states[user_id] = {"action": "adding_new_cat"}
         markup = InlineKeyboardMarkup()
-        markup.add(premium_inline_button("🔙 Back", "back_button", callback_data="admin_edit_services"))
+        markup.add(premium_inline_button("Back", "back_button", callback_data="admin_edit_services"))
         try: bot.delete_message(call.message.chat.id, call.message.message_id)
         except Exception: pass
         bot.send_message(call.message.chat.id, f"{pe('add_balance')} নতুন বাটন যোগ করতে ফরম্যাটে নাম এবং দাম লিখে পাঠান:\n<code>[Button Name] [Price]</code>", parse_mode="HTML", reply_markup=markup)
@@ -1609,8 +1618,8 @@ def process_deposit_submission(message, file_id, is_document=False):
 
         admin_markup = InlineKeyboardMarkup()
         admin_markup.add(
-            premium_inline_button("✅ Approve", "approve_btn", callback_data=f"app_{req_id}"),
-            premium_inline_button("❌ Reject", "reject_btn", callback_data=f"rej_{req_id}")
+            premium_inline_button("Approve", "approve_btn", callback_data=f"app_{req_id}"),
+            premium_inline_button("Reject", "reject_btn", callback_data=f"rej_{req_id}")
         )
 
         caption_text = (
@@ -1782,7 +1791,7 @@ def handle_all_messages_and_broadcast(message):
             )
 
             admin_markup = InlineKeyboardMarkup()
-            admin_markup.add(premium_inline_button("✅ Complete Order & Deliver", "approve_btn", callback_data=f"complete_order_{user_id}"))
+            admin_markup.add(premium_inline_button("Complete Order & Deliver", "approve_btn", callback_data=f"complete_order_{user_id}"))
 
             admin_order_msg = (
                 f"{pe('alarm_bell')} <b>New Order Received!</b>\n\n"
@@ -1822,8 +1831,8 @@ def handle_all_messages_and_broadcast(message):
                     admin_states[user_id] = {"pending_btn_data": {"mode": "new_cat", "name": name, "price": price}}
                     markup = InlineKeyboardMarkup(row_width=2)
                     markup.add(
-                        premium_inline_button("✅ Yes (Add Emoji)", "approve_btn", callback_data="btn_emojichoice_yes"),
-                        premium_inline_button("❌ No (Text Only)", "reject_btn", callback_data="btn_emojichoice_no")
+                        premium_inline_button("Yes (Add Emoji)", "approve_btn", callback_data="btn_emojichoice_yes"),
+                        premium_inline_button("No (Text Only)", "reject_btn", callback_data="btn_emojichoice_no")
                     )
                     bot.reply_to(message, f"<b>{name}</b> (৳{price})\n\nআপনি কি এই বাটনে প্রিমিয়াম ইমোজি যুক্ত করতে চান?", parse_mode="HTML", reply_markup=markup)
                     return
@@ -1841,8 +1850,8 @@ def handle_all_messages_and_broadcast(message):
                     admin_states[user_id] = {"pending_btn_data": {"mode": "edit_cat", "cat_id": cat_id, "name": name, "price": price}}
                     markup = InlineKeyboardMarkup(row_width=2)
                     markup.add(
-                        premium_inline_button("✅ Yes (Add Emoji)", "approve_btn", callback_data="btn_emojichoice_yes"),
-                        premium_inline_button("❌ No (Text Only)", "reject_btn", callback_data="btn_emojichoice_no")
+                        premium_inline_button("Yes (Add Emoji)", "approve_btn", callback_data="btn_emojichoice_yes"),
+                        premium_inline_button("No (Text Only)", "reject_btn", callback_data="btn_emojichoice_no")
                     )
                     bot.reply_to(message, f"<b>{name}</b> (৳{price})\n\nআপনি কি এই বাটনে প্রিমিয়াম ইমোজি যুক্ত করতে চান?", parse_mode="HTML", reply_markup=markup)
                     return
@@ -1860,8 +1869,8 @@ def handle_all_messages_and_broadcast(message):
                     admin_states[user_id] = {"pending_btn_data": {"mode": "new_sub", "cat_id": cat_id, "name": sub_name, "price": price}}
                     markup = InlineKeyboardMarkup(row_width=2)
                     markup.add(
-                        premium_inline_button("✅ Yes (Add Emoji)", "approve_btn", callback_data="btn_emojichoice_yes"),
-                        premium_inline_button("❌ No (Text Only)", "reject_btn", callback_data="btn_emojichoice_no")
+                        premium_inline_button("Yes (Add Emoji)", "approve_btn", callback_data="btn_emojichoice_yes"),
+                        premium_inline_button("No (Text Only)", "reject_btn", callback_data="btn_emojichoice_no")
                     )
                     bot.reply_to(message, f"<b>{sub_name}</b> (৳{price})\n\nআপনি কি এই প্যাকেজ বাটনে প্রিমিয়াম ইমোজি যুক্ত করতে চান?", parse_mode="HTML", reply_markup=markup)
                     return
