@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import os
 import sqlite3
 import threading
@@ -9,15 +8,28 @@ import telebot
 from telebot.types import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 import uuid
 import re
+from pymongo import MongoClient
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
 # 🔑 টোকেন এবং অ্যাডমিন আইডি
-TOKEN = "8950372563:AAHDH5hPsjJfQknZAUFn9v5-W7jgWE3oMqc"
+TOKEN = "8923417158:AAE9XQ2SgQ10KT31WSh9lwTTm2psQDb5i-Q"
 ADMIN_ID = 7196917072
 
 FORCE_SUB_CHANNEL = "@BotAllUpdateServis"
+
+# 🌐 MongoDB Cloud Database Configuration
+MONGO_URI = "mongodb+srv://your_mongo_user:your_password@cluster.mongodb.net/?retryWrites=true&w=majority"
+try:
+    mongo_client = MongoClient(MONGO_URI)
+    mongo_db = mongo_client["shop_bot_cloud_db"]
+    users_collection = mongo_db["users"]
+    stock_collection = mongo_db["stock"]
+    settings_collection = mongo_db["settings"]
+    print("MongoDB Connected Successfully!")
+except Exception as e:
+    print(f"MongoDB Connection Error: {e}")
 
 bot = telebot.TeleBot(TOKEN)
 user_temp_deposit = {}
@@ -47,7 +59,7 @@ PREMIUM_EMOJIS = {
     "package_item": "5251680306385151250",
     "telegram_premium_cat": "5789911984283586269",
     "vpn_service_cat": "5998881947328188290",
-    "mail_cat": "5253742260054409879",
+    "mail_cat": "5354826222331245563",
     "proxy_cat": "5287292843763713628",
     "mail_item": "5967280668885913944",
     "proxy_item": "4956560549287560231",
@@ -60,12 +72,18 @@ PREMIUM_EMOJIS = {
     "open_here_btn": "5368516976048104432",
     "txt_file_btn": "6109595432441090250",
 
-    "vpn_nord": "5861679637964262698",
-    "vpn_express": "5814184382071574423",
-    "vpn_ipvanish": "5816505378103365924",
-    "vpn_hma": "5816862049367494010",
-    "vpn_xvpn": "5816759184900754744",
-    "vpn_proton": "5861679637964262698",
+    # ভিপিএন ইমোজি কোডসমূহ
+    "vpn_express": "5796153709931009517",
+    "vpn_cyberghost": "5796309230696797985",
+    "vpn_panda": "5796561774773801876",
+    "vpn_ipvanish": "5816862049367494010",
+    "vpn_nord": "5796345694969140339",
+    "vpn_hma": "5796595022115639741",
+    "vpn_pia": "5794298344188678751",
+    "vpn_surfshark": "5796592771552777710",
+    "vpn_bitdefender": "5793973558761756143",
+    "vpn_turbo": "5796633857209931262",
+    "vpn_proton": "5796504385420792898",
 
     "analytics": "5213107179329953547",
     "member_count_file": "5314665894406805639",
@@ -75,7 +93,7 @@ PREMIUM_EMOJIS = {
     "live_broadcast": "6219940267626078011",
     "add_balance": "6219646698021463224",
     "bulk_update": "6084506256427456298",
-    "remove_money": "6068810023566317366",   # 📌 নতুন রিমুভ মানি বাটন ইমোজি
+    "remove_money": "6068810023566317366",
     "post_edit": "5435907392334215552",
     "button_edit": "5406683434124859552",
     "edit_service": "5269402556924180806",
@@ -128,7 +146,7 @@ POST_PREMIUM_EMOJIS = {
     "username_link": "5814427657609153890",
     "telegram_premium_cat": "5789911984283586269",
     "vpn_service_cat": "5998881947328188290",
-    "mail_cat": "5253742260054409879",
+    "mail_cat": "5354826222331245563",
     "proxy_cat": "5287292843763713628",
     "camera_icon": "5244699979506788336"
 }
@@ -141,47 +159,26 @@ def pe(key):
 
 def get_vpn_emoji_key(vpn_name):
     low = vpn_name.lower()
-    if "nord" in low: return "vpn_nord"
     if "express" in low: return "vpn_express"
-    if "ipvanish" in low: return "vpn_ipvanish"
+    if "cyberghost" in low: return "vpn_cyberghost"
+    if "panda" in low: return "vpn_panda"
+    if "ipvanish" in low or "ip vanish" in low: return "vpn_ipvanish"
+    if "nord" in low: return "vpn_nord"
     if "hma" in low: return "vpn_hma"
-    if "x vpn" in low or "x-vpn" in low: return "vpn_xvpn"
+    if "pia" in low: return "vpn_pia"
+    if "surfshark" in low: return "vpn_surfshark"
+    if "bitdefender" in low: return "vpn_bitdefender"
+    if "turbo" in low: return "vpn_turbo"
     if "proton" in low: return "vpn_proton"
     return "vpn_service_cat"
 
-OWNER_PREMIUM_SETTING = "owner_premium"
-
-def update_owner_premium_status(user):
-    if not user or user.id != ADMIN_ID: return
-    premium = getattr(user, "is_premium", None)
-    if premium is None: return
-    try:
-        conn = sqlite3.connect("shop_bot.db", timeout=30)
-        cursor = conn.cursor()
-        cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (OWNER_PREMIUM_SETTING, "1" if premium else "0"))
-        conn.commit()
-        conn.close()
-    except Exception:
-        pass
-
-def owner_has_premium():
-    try:
-        conn = sqlite3.connect("shop_bot.db", timeout=30)
-        cursor = conn.cursor()
-        cursor.execute("SELECT value FROM settings WHERE key = ?", (OWNER_PREMIUM_SETTING,))
-        row = cursor.fetchone()
-        conn.close()
-        return bool(row and row[0] == "1")
-    except Exception:
-        return False
-
 def premium_keyboard_button(text, emoji_key):
     emoji_id = PREMIUM_EMOJIS.get(emoji_key)
-    if owner_has_premium() and emoji_id:
-        return KeyboardButton(text, icon_custom_emoji_id=emoji_id)
-    return KeyboardButton(text)
+    kwargs = {}
+    if emoji_id:
+        kwargs["icon_custom_emoji_id"] = emoji_id
+    return KeyboardButton(text, **kwargs)
 
-# 📌 এখানে শর্ত তুলে দিয়ে সরাসরি ইনলাইন বাটনে প্রিমিয়াম ইমোজি আইডি সেট করা হয়েছে
 def premium_inline_button(text, emoji_key, callback_data=None, url=None):
     kwargs = {}
     if callback_data is not None: kwargs["callback_data"] = callback_data
@@ -344,11 +341,11 @@ def init_db():
         cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (key, val))
     conn.commit()
 
-    cursor.execute("INSERT OR REPLACE INTO categories VALUES ('hotmail', 'Hotmail Account', 0.85, 1, 'mail')")
-    cursor.execute("INSERT OR REPLACE INTO categories VALUES ('outlook', 'Outlook Account', 0.85, 1, 'mail')")
-    cursor.execute("INSERT OR REPLACE INTO categories VALUES ('Outlook fr', 'Outlook fr. (High quality)', 1.0, 1, 'mail')")
-    cursor.execute("INSERT OR REPLACE INTO categories VALUES ('Ig Hotmail', 'Instagram Id Create Hotmail', 0.55, 1, 'mail')")
-    cursor.execute("INSERT OR REPLACE INTO categories VALUES ('proxy', 'Owl Proxy (200MB)', 7.0, 1, 'proxy')")
+    cursor.execute("INSERT OR REPLACE INTO categories VALUES ('hotmail', 'Hotmail Account', 1.4, 1, 'mail')")
+    cursor.execute("INSERT OR REPLACE INTO categories VALUES ('outlook', 'Outlook Account', 1.5, 1, 'mail')")
+    cursor.execute("INSERT OR REPLACE INTO categories VALUES ('Outlook fr', 'Outlook fr. (High quality)', 1.8, 1, 'mail')")
+    cursor.execute("INSERT OR REPLACE INTO categories VALUES ('Ig Hotmail', 'Instagram Id Create Hotmail', 0.6, 1, 'mail')")
+    cursor.execute("INSERT OR REPLACE INTO categories VALUES ('proxy', 'Owl Proxy (200MB)', 0.9, 1, 'proxy')")
 
     cursor.execute("SELECT COUNT(*) FROM sub_services WHERE cat_id = 'telegram_premium'")
     if cursor.fetchone()[0] == 0:
@@ -356,25 +353,31 @@ def init_db():
         cursor.execute("INSERT INTO sub_services (cat_id, sub_name, price, has_emoji) VALUES ('telegram_premium', 'Telegram Premium (6 Month)', 2520.0, 1)")
         cursor.execute("INSERT INTO sub_services (cat_id, sub_name, price, has_emoji) VALUES ('telegram_premium', 'Telegram Premium (12 Month)', 4030.0, 1)")
 
-    cursor.execute("SELECT COUNT(*) FROM sub_services WHERE cat_id LIKE 'vpn_%'")
-    if cursor.fetchone()[0] == 0:
-        vpns = ["Nord VPN", "Express VPN", "IPVanish VPN", "Hma VPN", "X VPN", "Proton VPN"]
-        for v in vpns:
-            cursor.execute("INSERT INTO sub_services (cat_id, sub_name, price, has_emoji) VALUES ('vpn_3d', ?, 20.0, 1)", (f"{v} (3 Day)",))
-            cursor.execute("INSERT INTO sub_services (cat_id, sub_name, price, has_emoji) VALUES ('vpn_7d', ?, 35.0, 1)", (f"{v} (7 Day)",))
-            cursor.execute("INSERT INTO sub_services (cat_id, sub_name, price, has_emoji) VALUES ('vpn_9d', ?, 45.0, 1)", (f"{v} (9 Day)",))
-            cursor.execute("INSERT INTO sub_services (cat_id, sub_name, price, has_emoji) VALUES ('vpn_1m', ?, 95.0, 1)", (f"{v} (1 Month)",))
+    cursor.execute("DELETE FROM sub_services WHERE cat_id IN ('vpn_3d', 'vpn_7d', 'vpn_14d', 'vpn_30d')")
+    
+    vpn_3d_list = ["Express VPN", "Cyberghost VPN", "Panda VPN", "IP Vanish VPN"]
+    for v in vpn_3d_list:
+        sub_n = f"{v} (3 Day)"
+        cursor.execute("INSERT INTO sub_services (cat_id, sub_name, price, has_emoji) VALUES ('vpn_3d', ?, 20.0, 1)", (sub_n,))
+
+    vpn_7d_list = ["Nord VPN", "HMA VPN", "PIA VPN", "Surfshark VPN", "Bitdefender VPN", "Turbo VPN"]
+    for v in vpn_7d_list:
+        sub_n = f"{v} (7 Day)"
+        cursor.execute("INSERT INTO sub_services (cat_id, sub_name, price, has_emoji) VALUES ('vpn_7d', ?, 30.0, 1)", (sub_n,))
+
+    vpn_14d_list = ["Proton VPN"]
+    for v in vpn_14d_list:
+        sub_n = f"{v} (14 Day)"
+        cursor.execute("INSERT INTO sub_services (cat_id, sub_name, price, has_emoji) VALUES ('vpn_14d', ?, 50.0, 1)", (sub_n,))
+
+    cursor.execute("INSERT INTO sub_services (cat_id, sub_name, price, has_emoji) VALUES ('vpn_30d', 'Nord VPN (30 Day)', 210.0, 1)")
+    cursor.execute("INSERT INTO sub_services (cat_id, sub_name, price, has_emoji) VALUES ('vpn_30d', 'Hma VPN (30 Day)', 110.0, 1)")
+    cursor.execute("INSERT INTO sub_services (cat_id, sub_name, price, has_emoji) VALUES ('vpn_30d', 'Proton VPN (30 Day)', 160.0, 1)")
 
     conn.commit()
     conn.close()
 
 init_db()
-
-conn = sqlite3.connect("shop_bot.db", timeout=30)
-cursor = conn.cursor()
-cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", (OWNER_PREMIUM_SETTING, "0"))
-conn.commit()
-conn.close()
 
 def get_setting_msg(key, default=""):
     conn = sqlite3.connect("shop_bot.db", timeout=30)
@@ -416,14 +419,13 @@ def main_menu_inline(user_id):
 def get_categories_markup():
     markup = InlineKeyboardMarkup(row_width=1)
     markup.add(
-        premium_inline_button("All Mail Service", "mail_cat", callback_data="group_mail"),
-        premium_inline_button("All Proxy Service", "proxy_cat", callback_data="group_proxy"),
+        premium_inline_button("Mail Service", "mail_cat", callback_data="group_mail"),
+        premium_inline_button("Proxy Service", "proxy_cat", callback_data="group_proxy"),
         premium_inline_button("Telegram Premium Buy", "telegram_premium_cat", callback_data="special_cat_telegram_premium"),
         premium_inline_button("VPN Service", "vpn_service_cat", callback_data="special_cat_vpn_service")
     )
     return markup
 
-# 📌 অ্যাডমিন প্যানেল: এখানে 'Remove Money' বাটন যুক্ত করা হলো
 def get_admin_markup():
     markup = InlineKeyboardMarkup(row_width=1)
     markup.add(
@@ -434,7 +436,7 @@ def get_admin_markup():
         premium_inline_button("Recover Balance List (.txt)", "recover_balance", callback_data="admin_recover_balance_list"),
         premium_inline_button("Live Analysis & User Broadcast Message", "live_broadcast", callback_data="admin_live_broadcast"),
         premium_inline_button("Add Member Money Back", "add_balance", callback_data="admin_add_member_balance"),
-        premium_inline_button("Remove Money", "remove_money", callback_data="admin_remove_member_balance"), # 📌 নতুন রিমুভ মানি বাটন
+        premium_inline_button("Remove Money", "remove_money", callback_data="admin_remove_member_balance"),
         premium_inline_button("Update Back All Money Member", "bulk_update", callback_data="admin_bulk_money_update"),
         premium_inline_button("All Post Edit", "post_edit", callback_data="admin_all_post_edit"),
         premium_inline_button("All Button Edit", "button_edit", callback_data="admin_all_button_edit"),
@@ -446,7 +448,6 @@ def get_admin_markup():
 @bot.message_handler(func=lambda message: message.text and "Restart Bot" in message.text)
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
-    update_owner_premium_status(message.from_user)
     user_id = message.from_user.id
     first_name = message.from_user.first_name or "User"
     username = f"@{message.from_user.username}" if message.from_user.username else "N/A"
@@ -464,6 +465,15 @@ def send_welcome(message):
     conn.commit()
     conn.close()
 
+    try:
+        users_collection.update_one(
+            {"user_id": user_id},
+            {"$set": {"first_name": first_name, "username": username}, "$setOnInsert": {"balance": 0.0}},
+            upsert=True
+        )
+    except Exception:
+        pass
+
     if not check_user_subscription(user_id):
         not_joined_msg = get_setting_msg('not_joined_msg', f"{pe('warn_icon')} আপনি আমাদের চ্যানেলে Join করেননি!")
         bot.send_message(message.chat.id, not_joined_msg, parse_mode="HTML", reply_markup=get_force_sub_markup())
@@ -477,7 +487,6 @@ def send_welcome(message):
 
 @bot.message_handler(func=lambda message: message.text and any(keyword in message.text for keyword in ["All Services", "Deposit", "Profile", "Support", "Admin Panel", "Search User ID"]))
 def handle_reply_buttons(message):
-    update_owner_premium_status(message.from_user)
     user_id = message.from_user.id
     text = message.text
     username = f"@{message.from_user.username}" if message.from_user.username else "N/A"
@@ -507,7 +516,7 @@ def handle_reply_buttons(message):
         msg = get_setting_msg('deposit_info_msg', (
             f"{pe('deposit_money')} <b>আপনি কত টাকা ডিপোজিট করতে চান সংখ্যাটি লিখে পাঠান:</b>\n\n"
             f"{pe('list_point')} সর্বনিম্ন ১০ টাকা\n"
-            f"{pe('list_point')} সর্বোচ্চ ১০০০০ টাকা"
+            f"{pe('list_point')} সর্বোচ্চ ১০০ টাকা"
         ))
         bot.send_message(message.chat.id, msg, parse_mode="HTML", reply_markup=get_deposit_amount_markup())
 
@@ -590,6 +599,11 @@ def process_purchase(chat_id, user_id, cat_id, qty):
     conn.commit()
     conn.close()
 
+    try:
+        users_collection.update_one({"user_id": user_id}, {"$set": {"balance": new_balance}})
+    except Exception:
+        pass
+
     raw_contents = [content.strip() for item_id, content in items]
     order_key = str(uuid.uuid4())[:8]
     order_delivery_cache[order_key] = {
@@ -616,10 +630,8 @@ def process_purchase(chat_id, user_id, cat_id, qty):
 
     bot.send_message(chat_id, purchase_msg, parse_mode="HTML", reply_markup=delivery_markup)
 
-# ----------------- Callbacks & Handlers -----------------
 @bot.callback_query_handler(func=lambda call: True)
 def handle_callback(call):
-    update_owner_premium_status(call.from_user)
     user_id = call.from_user.id
     username = f"@{call.from_user.username}" if call.from_user.username else "N/A"
     save_user_id_to_file(user_id)
@@ -768,7 +780,6 @@ def handle_callback(call):
         bot.send_message(call.message.chat.id, f"{pe('add_balance')} <b>Add Member Money Back</b>\n\nযে ইউজারের অ্যাকাউন্টে আগের টাকা ব্যাক দিতে চাচ্ছেন, তার সঠিক <b>User ID</b> চ্যাটে লিখে পাঠান:", parse_mode="HTML", reply_markup=markup)
         return
 
-    # 📌 নতুন রিমুভ মানি কলব্যাক হ্যান্ডলার
     elif call.data == "admin_remove_member_balance" and user_id == ADMIN_ID:
         conn.close()
         admin_states[user_id] = {"action": "waiting_member_uid_for_remove_money"}
@@ -810,7 +821,7 @@ def handle_callback(call):
             markup.add(premium_inline_button(f"{name} - ৳{price} (Stock: {stock_count})", em_key, callback_data=f"buy_{cat_id}"))
         markup.add(premium_inline_button("Back", "back_button", callback_data="all_services"))
 
-        bot.edit_message_text(f"{pe('mail_cat')} <b>All Mail Services</b> {pe('mail_cat')}\n\nনিচের মেইলগুলো থেকে আপনার পছন্দমতো সিলেক্ট করুন:", call.message.chat.id, call.message.message_id, parse_mode="HTML", reply_markup=markup)
+        bot.edit_message_text(f"{pe('mail_cat')} <b>Mail Service</b> {pe('mail_cat')}\n\nনিচের মেইলগুলো থেকে আপনার পছন্দমতো সিলেক্ট করুন:", call.message.chat.id, call.message.message_id, parse_mode="HTML", reply_markup=markup)
 
     elif call.data == "group_proxy":
         cursor.execute("SELECT cat_id, name, price, has_emoji FROM categories WHERE group_type = 'proxy'")
@@ -828,7 +839,7 @@ def handle_callback(call):
             markup.add(premium_inline_button(f"{name} - ৳{price} (Stock: {stock_count})", em_key, callback_data=f"buy_{cat_id}"))
         markup.add(premium_inline_button("Back", "back_button", callback_data="all_services"))
 
-        bot.edit_message_text(f"{pe('proxy_cat')} <b>All Proxy Services</b> {pe('proxy_cat')}\n\nনিচের প্রক্সিগুলো থেকে আপনার পছন্দমতো সিলেক্ট করুন:", call.message.chat.id, call.message.message_id, parse_mode="HTML", reply_markup=markup)
+        bot.edit_message_text(f"{pe('proxy_cat')} <b>Proxy Service</b> {pe('proxy_cat')}\n\nনিচের প্রক্সিগুলো থেকে আপনার পছন্দমতো সিলেক্ট করুন:", call.message.chat.id, call.message.message_id, parse_mode="HTML", reply_markup=markup)
 
     elif call.data == "special_cat_vpn_service":
         conn.close()
@@ -836,8 +847,8 @@ def handle_callback(call):
         markup.add(
             premium_inline_button("3 Day", "vpn_service_cat", callback_data="vpn_dur_vpn_3d"),
             premium_inline_button("7 Day", "vpn_service_cat", callback_data="vpn_dur_vpn_7d"),
-            premium_inline_button("9 Day", "vpn_service_cat", callback_data="vpn_dur_vpn_9d"),
-            premium_inline_button("1 Month", "vpn_service_cat", callback_data="vpn_dur_vpn_1m"),
+            premium_inline_button("14 Day", "vpn_service_cat", callback_data="vpn_dur_vpn_14d"),
+            premium_inline_button("30 Day", "vpn_service_cat", callback_data="vpn_dur_vpn_30d"),
             premium_inline_button("Back", "back_button", callback_data="all_services")
         )
         bot.edit_message_text(f"{pe('vpn_service_cat')} <b>VPN Service</b> {pe('vpn_service_cat')}\n\nআপনি কতদিনের জন্য VPN নিতে চাচ্ছেন মেয়াদের ক্যাটাগরি সিলেক্ট করুন:", call.message.chat.id, call.message.message_id, parse_mode="HTML", reply_markup=markup)
@@ -851,8 +862,8 @@ def handle_callback(call):
         dur_text_map = {
             "vpn_3d": "৩ দিন মেয়াদের VPN গুলো নিচে দেওয়া হলো:",
             "vpn_7d": "৭ দিন মেয়াদের VPN গুলো নিচে দেওয়া হলো:",
-            "vpn_9d": "৯ দিন মেয়াদের VPN গুলো নিচে দেওয়া হলো:",
-            "vpn_1m": "১ মাস মেয়াদের VPN গুলো নিচে দেওয়া হলো:"
+            "vpn_14d": "১৪ দিন মেয়াদের VPN গুলো নিচে দেওয়া হলো:",
+            "vpn_30d": "৩০ দিন মেয়াদের VPN গুলো নিচে দেওয়া হলো:"
         }
         dynamic_heading = dur_text_map.get(dur_cat, "নিচের VPN গুলো থেকে আপনার পছন্দের সার্ভিসটি সিলেক্ট করুন:")
 
@@ -979,13 +990,18 @@ def handle_callback(call):
                 conn.commit()
                 bot.send_message(call.message.chat.id, f"{pe('step_tick')} সফলভাবে নতুন সাব-বাটন যুক্ত হয়েছে!\nনাম: <code>{s_name}</code>\nমূল্য: ৳{s_price}", parse_mode="HTML")
 
+            elif mode == "edit_sub":
+                sub_id, s_name, s_price = pdata["sub_id"], pdata["name"], pdata["price"]
+                cursor.execute("UPDATE sub_services SET sub_name = ?, price = ?, has_emoji = ? WHERE sub_id = ?", (s_name, s_price, has_em, sub_id))
+                conn.commit()
+                bot.send_message(call.message.chat.id, f"{pe('step_tick')} সফলভাবে সাব-প্যাকেজ আপডেট হয়েছে!\nনাম: <code>{s_name}</code>\nমূল্য: ৳{s_price}", parse_mode="HTML")
+
             del admin_states[user_id]
         conn.close()
         try: bot.delete_message(call.message.chat.id, call.message.message_id)
         except Exception: pass
         return
 
-    # ----------------- Stock Management (Admin Panel) -----------------
     elif call.data == "admin_add_stock_menu" and user_id == ADMIN_ID:
         if user_id in admin_states: del admin_states[user_id]
         cursor.execute("SELECT cat_id, name FROM categories")
@@ -1084,10 +1100,9 @@ def handle_callback(call):
         markup.add(premium_inline_button("Back", "back_button", callback_data=f"manage_stock_{cat_id}"))
         try: bot.delete_message(call.message.chat.id, call.message.message_id)
         except Exception: pass
-        bot.send_message(call.message.chat.id, f"{pe('box_package')} আপনি সিলেক্ট করেছেন: <b>{cat_name}</b>\n\nএখন নতুন স্টক ফাইল (.txt) সরাসরি এই চ্যাটে ফাইল হিসেবে আপলোড করে পাঠান:", parse_mode="HTML", reply_markup=markup)
+        bot.send_message(call.message.chat.id, f"{pe('box_package')} আপনি সিলেক্ট করেছেন: <b>{cat_name}</b>\n\nএখন নতুন স্টক ফাইল (.txt) সরাসরি এই চ্যাটে ফাইল হিসেবে আপলোড করে পাঠান।", parse_mode="HTML", reply_markup=markup)
         return
 
-    # ----------------- Other Admin Panel Callbacks -----------------
     elif call.data == "admin_analytics" and user_id == ADMIN_ID:
         cursor.execute("SELECT COUNT(*) FROM users")
         total_users = cursor.fetchone()[0]
@@ -1256,13 +1271,14 @@ def handle_callback(call):
         markup = InlineKeyboardMarkup(row_width=1)
         
         markup.add(
-            premium_inline_button("Manage Sub-Buttons: All Mail Service", "edit_service", callback_data="editsubs_group_mail"),
-            premium_inline_button("Manage Sub-Buttons: All Proxy Service", "edit_service", callback_data="editsubs_group_proxy")
+            premium_inline_button("Manage Sub-Buttons: Mail Service", "edit_service", callback_data="editsubs_group_mail"),
+            premium_inline_button("Manage Sub-Buttons: Proxy Service", "edit_service", callback_data="editsubs_group_proxy"),
+            premium_inline_button("Manage Sub-Buttons: Telegram Premium Buy", "edit_service", callback_data="editsubs_telegram_premium"),
+            premium_inline_button("Manage Sub-Buttons: VPN Service", "edit_service", callback_data="editsubs_vpn_service")
         )
         
         special_ids = ["telegram_premium", "vpn_service"]
         regular_cats = [c for c in categories if c[0] not in special_ids and c[0] not in ['hotmail', 'outlook', 'Outlook fr', 'Ig Hotmail', 'proxy']]
-        special_cats = [c for c in categories if c[0] in special_ids]
         
         for cat_id, name, price in regular_cats:
             sub_conn = sqlite3.connect("shop_bot.db", timeout=30)
@@ -1272,12 +1288,6 @@ def handle_callback(call):
             sub_conn.close()
             markup.add(
                 premium_inline_button(f"{name} | ৳{price} | Stock: {stock_count}", "edit_service", callback_data=f"editcat_{cat_id}"),
-                premium_inline_button(f"Delete {name}", "delete_trash", callback_data=f"confirm_del_{cat_id}")
-            )
-            
-        for cat_id, name, price in special_cats:
-            markup.add(
-                premium_inline_button(f"Manage Sub-Buttons: {name}", "edit_service", callback_data=f"editsubs_{cat_id}"),
                 premium_inline_button(f"Delete {name}", "delete_trash", callback_data=f"confirm_del_{cat_id}")
             )
         
@@ -1314,8 +1324,8 @@ def handle_callback(call):
             markup.add(
                 premium_inline_button("Manage 3 Day", "edit_service", callback_data="editsubs_vpn_3d"),
                 premium_inline_button("Manage 7 Day", "edit_service", callback_data="editsubs_vpn_7d"),
-                premium_inline_button("Manage 9 Day", "edit_service", callback_data="editsubs_vpn_9d"),
-                premium_inline_button("Manage 1 Month", "edit_service", callback_data="editsubs_vpn_1m"),
+                premium_inline_button("Manage 14 Day", "edit_service", callback_data="editsubs_vpn_14d"),
+                premium_inline_button("Manage 30 Day", "edit_service", callback_data="editsubs_vpn_30d"),
                 premium_inline_button("Back", "back_button", callback_data="admin_edit_services")
             )
             try: bot.delete_message(call.message.chat.id, call.message.message_id)
@@ -1342,7 +1352,7 @@ def handle_callback(call):
             )
             try: bot.delete_message(call.message.chat.id, call.message.message_id)
             except Exception: pass
-            bot.send_message(call.message.chat.id, f"{pe('edit_service')} <b>Manage {('Mail Services' if g_type=='mail' else 'Proxy Services')}:</b>", parse_mode="HTML", reply_markup=markup)
+            bot.send_message(call.message.chat.id, f"{pe('edit_service')} <b>Manage {('Mail Service' if g_type=='mail' else 'Proxy Service')}:</b>", parse_mode="HTML", reply_markup=markup)
             return
 
         cursor.execute("SELECT sub_id, sub_name, price FROM sub_services WHERE cat_id = ?", (cat_id,))
@@ -1351,7 +1361,10 @@ def handle_callback(call):
 
         markup = InlineKeyboardMarkup(row_width=1)
         for sub_id, sub_name, price in subs:
-            markup.add(premium_inline_button(f"Delete: {sub_name} (৳{price})", "delete_trash", callback_data=f"delsub_{sub_id}_{cat_id}"))
+            markup.add(
+                premium_inline_button(f"Edit: {sub_name} (৳{price})", "edit_service", callback_data=f"editsubitem_{sub_id}_{cat_id}"),
+                premium_inline_button(f"Delete: {sub_name}", "delete_trash", callback_data=f"delsub_{sub_id}_{cat_id}")
+            )
         
         markup.add(
             premium_inline_button("Add New Package", "add_balance", callback_data=f"addsub_{cat_id}"),
@@ -1360,6 +1373,19 @@ def handle_callback(call):
         try: bot.delete_message(call.message.chat.id, call.message.message_id)
         except Exception: pass
         bot.send_message(call.message.chat.id, f"{pe('edit_service')} <b>Manage Sub-Buttons:</b>", parse_mode="HTML", reply_markup=markup)
+
+    elif call.data.startswith("editsubitem_") and user_id == ADMIN_ID:
+        parts = call.data.split("_")
+        sub_id, cat_id = parts[1], parts[2]
+        cursor.execute("SELECT sub_name, price FROM sub_services WHERE sub_id = ?", (sub_id,))
+        sub_item = cursor.fetchone()
+        conn.close()
+        admin_states[user_id] = {"action": "editing_sub_item", "sub_id": sub_id, "cat_id": cat_id}
+        markup = InlineKeyboardMarkup()
+        markup.add(premium_inline_button("Back", "back_button", callback_data=f"editsubs_{cat_id}"))
+        try: bot.delete_message(call.message.chat.id, call.message.message_id)
+        except Exception: pass
+        bot.send_message(call.message.chat.id, f"{pe('edit_pencil')} এডিট করছেন: <b>{sub_item[0]}</b> (মূল্য: ৳{sub_item[1]})\n\nনতুন নাম ও রেট লিখে পাঠান:\n<b>ফরম্যাট:</b> <code>[নাম] [রেট]</code>", parse_mode="HTML", reply_markup=markup)
 
     elif call.data.startswith("delsub_") and user_id == ADMIN_ID:
         parts = call.data.split("_")
@@ -1422,6 +1448,12 @@ def handle_callback(call):
             else:
                 cursor.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (amount, target_user))
             conn.commit()
+            
+            try:
+                users_collection.update_one({"user_id": target_user}, {"$inc": {"balance": amount}}, upsert=True)
+            except Exception:
+                pass
+
             conn.close()
             bot.send_message(target_user, f"{pe('deposit_success')} <b>আপনার ডিপোজিট সফল হয়েছে!</b>\nআপনার একাউন্টে <b>৳{amount}</b> যোগ করা হয়েছে। এখন আপনি কেনাকাটা করতে পারেন।", parse_mode="HTML", reply_markup=get_permanent_keyboard(target_user))
             try:
@@ -1455,13 +1487,47 @@ def handle_callback(call):
         admin_states[user_id] = {"action": "waiting_delivery_content", "target_user": target_user}
         bot.send_message(call.message.chat.id, f"{pe('list_point')} ইউজার ID: <code>{target_user}</code> এর অর্ডারের জন্য মেসেজ বা ডাটা লিখে পাঠান:", parse_mode="HTML")
 
+    elif call.data.startswith("vpn_nostock_cancel_") and user_id == ADMIN_ID:
+        parts = call.data.split("_")
+        target_user = int(parts[3])
+        refund_amount = float(parts[4])
+        
+        cursor.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (refund_amount, target_user))
+        conn.commit()
+        conn.close()
+
+        try:
+            users_collection.update_one({"user_id": target_user}, {"$inc": {"balance": refund_amount}})
+        except Exception:
+            pass
+
+        try:
+            bot.send_message(
+                target_user,
+                f"{pe('no_stock')} <b>দুঃখিত, আপনার অর্ডারটি ক্যানসেল করা হয়েছে!</b>\n\n"
+                f"আপনি যে ভিপিএন প্রোডাক্টটি অর্ডার করেছিলেন সেটি বর্তমানে আমাদের স্টকে নেই। "
+                f"তাই আপনার অর্ডারটি ক্যানসেল করে আপনার পরিশোধিত <b>৳{refund_amount}</b> টাকা আপনার অ্যাকাউন্টে ব্যাক (রিফান্ড) করে দেওয়া হয়েছে।",
+                parse_mode="HTML",
+                reply_markup=get_permanent_keyboard(target_user)
+            )
+        except Exception:
+            pass
+
+        bot.answer_callback_query(call.id, "অর্ডার সফলভাবে ক্যানসেল করা হয়েছে এবং ইউজারের টাকা রিফান্ড করা হয়েছে!", show_alert=True)
+        try:
+            bot.edit_message_caption(f"❌ VPN Order Cancelled & Refunded (User ID: {target_user}, Refund: ৳{refund_amount})", call.message.chat.id, call.message.message_id)
+        except Exception:
+            try:
+                bot.edit_message_text(f"❌ VPN Order Cancelled & Refunded (User ID: {target_user}, Refund: ৳{refund_amount})", call.message.chat.id, call.message.message_id)
+            except Exception:
+                pass
+        return
+
     else:
         conn.close()
 
-# ----------------- Document/File Handler -----------------
 @bot.message_handler(content_types=['document'])
 def handle_stock_file(message):
-    update_owner_premium_status(message.from_user)
     user_id = message.from_user.id
     save_user_id_to_file(user_id)
     
@@ -1535,6 +1601,12 @@ def handle_stock_file(message):
                             else:
                                 cursor.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (balance_amount, target_uid))
                             conn.commit()
+                            
+                            try:
+                                users_collection.update_one({"user_id": target_uid}, {"$inc": {"balance": balance_amount}}, upsert=True)
+                            except Exception:
+                                pass
+
                             recovered_count += 1
                             try:
                                 bot.send_message(target_uid, f"{pe('deposit_success')} <b>ব্যালেন্স রিকভারি আপডেট!</b>\n\nআপনার একাউন্টে পূর্বের <b>৳{balance_amount}</b> জমা দেওয়া হয়েছে!", parse_mode="HTML", reply_markup=get_permanent_keyboard(target_uid))
@@ -1545,7 +1617,7 @@ def handle_stock_file(message):
                 del admin_states[user_id]
                 bot.reply_to(message, f"{pe('step_tick')} রিকভারি সম্পূর্ণ হয়েছে! মোট <b>{recovered_count} জন</b> ইউজারের ব্যালেন্স সফলভাবে ব্যাক করা হয়েছে।", parse_mode="HTML")
             except Exception as e:
-                bot.reply_to(message, f"ফাইল প্রসেস করতে ত্রুটি ঘটেছে: {e}")
+                bot.reply_to(message, f"ফাইল পড়তে ত্রুটি ঘটেছে: {e}")
             return
 
         elif action == "waiting_analysis_txt_for_broadcast":
@@ -1577,9 +1649,7 @@ def handle_stock_file(message):
                 bot.reply_to(message, f"ফাইল পড়তে সমস্যা হয়েছে: {e}")
             return
 
-# ----------------- সমস্ত মেসেজ ও ডিপোজিট ফ্লো হ্যান্ডলার -----------------
 def process_deposit_submission(message, file_id, is_document=False):
-    update_owner_premium_status(message.from_user)
     user_id = message.from_user.id
     raw_first_name = message.from_user.first_name or "N/A"
     raw_username = f"@{message.from_user.username}" if message.from_user.username else "N/A"
@@ -1665,7 +1735,6 @@ def process_deposit_submission(message, file_id, is_document=False):
 
 @bot.message_handler(content_types=['text', 'photo', 'voice', 'audio', 'video', 'document'])
 def handle_all_messages_and_broadcast(message):
-    update_owner_premium_status(message.from_user)
     user_id = message.from_user.id
     username = f"@{message.from_user.username}" if message.from_user.username else "N/A"
     save_user_id_to_file(user_id)
@@ -1779,7 +1848,14 @@ def handle_all_messages_and_broadcast(message):
             conn.commit()
             conn.close()
 
+            try:
+                users_collection.update_one({"user_id": user_id}, {"$set": {"balance": new_bal}})
+            except Exception:
+                pass
+
+            is_vpn_order = "vpn_" in cat_id or "Day" in sub_name
             emoji_k = "telegram_premium_cat" if "telegram" in cat_id else get_vpn_emoji_key(sub_name)
+            
             bot.send_message(
                 user_id,
                 f"{pe('order_pending')} আপনার অর্ডারটি সফলভাবে সাবমিট হয়েছে!\n\n"
@@ -1792,16 +1868,34 @@ def handle_all_messages_and_broadcast(message):
                 reply_markup=get_permanent_keyboard(user_id)
             )
 
-            admin_markup = InlineKeyboardMarkup()
-            admin_markup.add(premium_inline_button("Complete Order & Deliver", "approve_btn", callback_data=f"complete_order_{user_id}"))
+            admin_markup = InlineKeyboardMarkup(row_width=1)
+            admin_markup.add(
+                premium_inline_button("Complete Order & Deliver", "approve_btn", callback_data=f"complete_order_{user_id}"),
+            )
+            if is_vpn_order:
+                admin_markup.add(
+                    premium_inline_button("No Stock Cancel Delivery", "reject_btn", callback_data=f"vpn_nostock_cancel_{user_id}_{price}")
+                )
 
             admin_order_msg = (
-                f"{pe('alarm_bell')} <b>New Order Received!</b>\n\n"
+                f"{pe('alarm_bell')} <b>New VPN / Service Order Received!</b>\n\n"
                 f"{pe('profile_user')} <b>User ID:</b> <code>{user_id}</code>\n"
                 f"{pe('box_package')} <b>Service:</b> <b>{sub_name}</b>\n"
                 f"{pe('username_link')} <b>Target Account:</b> <code>{username_input}</code>\n"
                 f"{pe('money_spent')} <b>Price:</b> ৳{price}"
             )
+
+            for i in range(3):
+                try:
+                    bot.send_message(
+                        ADMIN_ID, 
+                        f"{pe('alarm_bell')} <b>[ORDER ALARM {i+1}/3] নতুন ভিপিএন অর্ডার এসেছে! টং টং! 🛎️🔔</b>", 
+                        parse_mode="HTML"
+                    )
+                    time.sleep(0.3)
+                except Exception:
+                    pass
+
             bot.send_message(ADMIN_ID, admin_order_msg, parse_mode="HTML", reply_markup=admin_markup)
             return
 
@@ -1819,7 +1913,6 @@ def handle_all_messages_and_broadcast(message):
                 bot.reply_to(message, f"{pe('warn_icon')} দয়া করে শুধু সংখ্যা লিখে পাঠান।", parse_mode="HTML")
                 return
 
-    # অ্যাডমিন প্যানেল অ্যাকশনস
     if user_id == ADMIN_ID and user_id in admin_states:
         state_data = admin_states[user_id]
         action = state_data.get("action")
@@ -1859,6 +1952,25 @@ def handle_all_messages_and_broadcast(message):
                     return
                 except ValueError:
                     bot.reply_to(message, f"{pe('warn_icon')} দামটি সঠিক সংখ্যায় দিন।", parse_mode="HTML")
+                    return
+
+        elif action == "editing_sub_item":
+            sub_id, cat_id = state_data["sub_id"], state_data["cat_id"]
+            parts = text.rsplit(maxsplit=1)
+            if len(parts) == 2:
+                s_name, price_str = parts[0], parts[1].replace('৳', '').strip()
+                try:
+                    s_price = float(price_str)
+                    admin_states[user_id] = {"pending_btn_data": {"mode": "edit_sub", "sub_id": sub_id, "name": s_name, "price": s_price}}
+                    markup = InlineKeyboardMarkup(row_width=2)
+                    markup.add(
+                        premium_inline_button("Yes (Add Emoji)", "approve_btn", callback_data="btn_emojichoice_yes"),
+                        premium_inline_button("No (Text Only)", "reject_btn", callback_data="btn_emojichoice_no")
+                    )
+                    bot.reply_to(message, f"<b>{s_name}</b> (৳{s_price})\n\nআপনি কি এই সাব-প্যাকেজ বাটনে প্রিমিয়াম ইমোজি যুক্ত করতে চান?", parse_mode="HTML", reply_markup=markup)
+                    return
+                except ValueError:
+                    bot.reply_to(message, f"{pe('warn_icon')} দাম সঠিক সংখ্যায় দিন।", parse_mode="HTML")
                     return
 
         elif action == "adding_sub_item":
@@ -1908,6 +2020,11 @@ def handle_all_messages_and_broadcast(message):
                     conn.commit()
                     new_bal = add_amount
                 conn.close()
+
+                try:
+                    users_collection.update_one({"user_id": target_uid}, {"$inc": {"balance": add_amount}}, upsert=True)
+                except Exception:
+                    pass
 
                 try:
                     bot.send_message(
@@ -1964,6 +2081,11 @@ def handle_all_messages_and_broadcast(message):
                 conn.close()
 
                 try:
+                    users_collection.update_one({"user_id": target_uid}, {"$set": {"balance": new_amount}}, upsert=True)
+                except Exception:
+                    pass
+
+                try:
                     bot.send_message(
                         target_uid,
                         f"{pe('deposit_success')} <b>অ্যাকাউন্ট ব্যালেন্স আপডেট হয়েছে!</b>\n\nআপনার একাউন্টের বর্তমান ব্যালেন্স এডজাস্ট করে <b>৳{new_amount}</b> নির্ধারণ করা হয়েছে।",
@@ -2014,7 +2136,6 @@ def handle_all_messages_and_broadcast(message):
                 bot.reply_to(message, f"ইউজারের কাছে মেসেজ পাঠানো যায়নি: {e}")
             return
 
-# ----------------- Web Server & Polling -----------------
 app = Flask(__name__)
 
 @app.route('/')
