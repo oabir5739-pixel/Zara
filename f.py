@@ -8,28 +8,15 @@ import telebot
 from telebot.types import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 import uuid
 import re
-from pymongo import MongoClient
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
 # 🔑 টোকেন এবং অ্যাডমিন আইডি
-TOKEN = "8923417158:AAE9XQ2SgQ10KT31WSh9lwTTm2psQDb5i-Q"
+TOKEN = "8787205440:AAH49LRZ5AUJ72CgBFCuflIOzQxVwWSM6mA"
 ADMIN_ID = 7196917072
 
 FORCE_SUB_CHANNEL = "@BotAllUpdateServis"
-
-# 🌐 MongoDB Cloud Database Configuration
-MONGO_URI = "mongodb+srv://your_mongo_user:your_password@cluster.mongodb.net/?retryWrites=true&w=majority"
-try:
-    mongo_client = MongoClient(MONGO_URI)
-    mongo_db = mongo_client["shop_bot_cloud_db"]
-    users_collection = mongo_db["users"]
-    stock_collection = mongo_db["stock"]
-    settings_collection = mongo_db["settings"]
-    print("MongoDB Connected Successfully!")
-except Exception as e:
-    print(f"MongoDB Connection Error: {e}")
 
 bot = telebot.TeleBot(TOKEN)
 user_temp_deposit = {}
@@ -37,8 +24,8 @@ pending_deposits = {}
 admin_states = {}
 order_delivery_cache = {}
 
-# ----------------- Premium Custom Emoji Config (Buttons) -----------------
-PREMIUM_EMOJIS = {
+# ----------------- Dynamic Database-Driven Premium Emojis Config -----------------
+DEFAULT_PREMIUM_EMOJIS = {
     "all_services": "5406683434124859552",
     "deposit": "5264895611517300926",
     "profile": "5325971446625758812",
@@ -72,7 +59,6 @@ PREMIUM_EMOJIS = {
     "open_here_btn": "5368516976048104432",
     "txt_file_btn": "6109595432441090250",
 
-    # ভিপিএন ইমোজি কোডসমূহ
     "vpn_express": "5796153709931009517",
     "vpn_cyberghost": "5796309230696797985",
     "vpn_panda": "5796561774773801876",
@@ -105,7 +91,7 @@ PREMIUM_EMOJIS = {
     "delete_trash": "6068810023566317366"
 }
 
-POST_PREMIUM_EMOJIS = {
+DEFAULT_POST_PREMIUM_EMOJIS = {
     "welcome_heart": "6292078018638651747",
     "welcome_shop": "5350699789551935589",
     "list_point": "6068777875736109056",
@@ -151,11 +137,51 @@ POST_PREMIUM_EMOJIS = {
     "camera_icon": "5244699979506788336"
 }
 
+def init_emoji_db():
+    conn = sqlite3.connect("shop_bot.db", timeout=30)
+    cursor = conn.cursor()
+    cursor.execute('''CREATE TABLE IF NOT EXISTS custom_emojis (
+                        emoji_key TEXT PRIMARY KEY,
+                        emoji_id TEXT,
+                        is_post INTEGER DEFAULT 0
+                    )''')
+    
+    # ডিফল্ট প্রিমিয়াম ইমোজিগুলো ডাটাবেজে সেট করা
+    for k, v in DEFAULT_PREMIUM_EMOJIS.items():
+        cursor.execute("INSERT OR IGNORE INTO custom_emojis (emoji_key, emoji_id, is_post) VALUES (?, ?, 0)", (k, v))
+    for k, v in DEFAULT_POST_PREMIUM_EMOJIS.items():
+        cursor.execute("INSERT OR IGNORE INTO custom_emojis (emoji_key, emoji_id, is_post) VALUES (?, ?, 1)", (k, v))
+    conn.commit()
+    conn.close()
+
+init_emoji_db()
+
 def pe(key):
-    emoji_id = POST_PREMIUM_EMOJIS.get(key, "")
-    if emoji_id:
-        return f'<tg-emoji emoji-id="{emoji_id}">✨</tg-emoji>'
+    try:
+        conn = sqlite3.connect("shop_bot.db", timeout=30)
+        cursor = conn.cursor()
+        cursor.execute("SELECT emoji_id FROM custom_emojis WHERE emoji_key = ? AND is_post = 1", (key,))
+        row = cursor.fetchone()
+        conn.close()
+        emoji_id = row[0] if row else DEFAULT_POST_PREMIUM_EMOJIS.get(key, "")
+        if emoji_id:
+            return f'<tg-emoji emoji-id="{emoji_id}">✨</tg-emoji>'
+    except Exception:
+        pass
     return ""
+
+def get_db_emoji(key):
+    try:
+        conn = sqlite3.connect("shop_bot.db", timeout=30)
+        cursor = conn.cursor()
+        cursor.execute("SELECT emoji_id FROM custom_emojis WHERE emoji_key = ? AND is_post = 0", (key,))
+        row = cursor.fetchone()
+        conn.close()
+        if row:
+            return row[0]
+    except Exception:
+        pass
+    return DEFAULT_PREMIUM_EMOJIS.get(key, "")
 
 def get_vpn_emoji_key(vpn_name):
     low = vpn_name.lower()
@@ -172,19 +198,44 @@ def get_vpn_emoji_key(vpn_name):
     if "proton" in low: return "vpn_proton"
     return "vpn_service_cat"
 
+OWNER_PREMIUM_SETTING = "owner_premium"
+
+def update_owner_premium_status(user):
+    if not user or user.id != ADMIN_ID: return
+    premium = getattr(user, "is_premium", None)
+    if premium is None: return
+    try:
+        conn = sqlite3.connect("shop_bot.db", timeout=30)
+        cursor = conn.cursor()
+        cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (OWNER_PREMIUM_SETTING, "1" if premium else "0"))
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
+
+def owner_has_premium():
+    try:
+        conn = sqlite3.connect("shop_bot.db", timeout=30)
+        cursor = conn.cursor()
+        cursor.execute("SELECT value FROM settings WHERE key = ?", (OWNER_PREMIUM_SETTING,))
+        row = cursor.fetchone()
+        conn.close()
+        return bool(row and row[0] == "1")
+    except Exception:
+        return False
+
 def premium_keyboard_button(text, emoji_key):
-    emoji_id = PREMIUM_EMOJIS.get(emoji_key)
-    kwargs = {}
-    if emoji_id:
-        kwargs["icon_custom_emoji_id"] = emoji_id
-    return KeyboardButton(text, **kwargs)
+    emoji_id = get_db_emoji(emoji_key)
+    if owner_has_premium() and emoji_id:
+        return KeyboardButton(text, icon_custom_emoji_id=emoji_id)
+    return KeyboardButton(text)
 
 def premium_inline_button(text, emoji_key, callback_data=None, url=None):
     kwargs = {}
     if callback_data is not None: kwargs["callback_data"] = callback_data
     if url is not None: kwargs["url"] = url
-    emoji_id = PREMIUM_EMOJIS.get(emoji_key)
-    if emoji_id:
+    emoji_id = get_db_emoji(emoji_key)
+    if owner_has_premium() and emoji_id:
         kwargs["icon_custom_emoji_id"] = emoji_id
     return InlineKeyboardButton(text, **kwargs)
 
@@ -379,6 +430,12 @@ def init_db():
 
 init_db()
 
+conn = sqlite3.connect("shop_bot.db", timeout=30)
+cursor = conn.cursor()
+cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", (OWNER_PREMIUM_SETTING, "0"))
+conn.commit()
+conn.close()
+
 def get_setting_msg(key, default=""):
     conn = sqlite3.connect("shop_bot.db", timeout=30)
     cursor = conn.cursor()
@@ -429,6 +486,7 @@ def get_categories_markup():
 def get_admin_markup():
     markup = InlineKeyboardMarkup(row_width=1)
     markup.add(
+        premium_inline_button("Premium Emoji Added", "txt_file_btn", callback_data="admin_premium_emoji_menu"),
         premium_inline_button("Bot Analytics & Users", "analytics", callback_data="admin_analytics"),
         premium_inline_button("Auto Count Member ID", "member_count_file", callback_data="admin_auto_member_count"),
         premium_inline_button("All Member Balance List", "balance_list", callback_data="admin_member_balance_list"),
@@ -448,6 +506,7 @@ def get_admin_markup():
 @bot.message_handler(func=lambda message: message.text and "Restart Bot" in message.text)
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
+    update_owner_premium_status(message.from_user)
     user_id = message.from_user.id
     first_name = message.from_user.first_name or "User"
     username = f"@{message.from_user.username}" if message.from_user.username else "N/A"
@@ -465,15 +524,6 @@ def send_welcome(message):
     conn.commit()
     conn.close()
 
-    try:
-        users_collection.update_one(
-            {"user_id": user_id},
-            {"$set": {"first_name": first_name, "username": username}, "$setOnInsert": {"balance": 0.0}},
-            upsert=True
-        )
-    except Exception:
-        pass
-
     if not check_user_subscription(user_id):
         not_joined_msg = get_setting_msg('not_joined_msg', f"{pe('warn_icon')} আপনি আমাদের চ্যানেলে Join করেননি!")
         bot.send_message(message.chat.id, not_joined_msg, parse_mode="HTML", reply_markup=get_force_sub_markup())
@@ -487,6 +537,7 @@ def send_welcome(message):
 
 @bot.message_handler(func=lambda message: message.text and any(keyword in message.text for keyword in ["All Services", "Deposit", "Profile", "Support", "Admin Panel", "Search User ID"]))
 def handle_reply_buttons(message):
+    update_owner_premium_status(message.from_user)
     user_id = message.from_user.id
     text = message.text
     username = f"@{message.from_user.username}" if message.from_user.username else "N/A"
@@ -584,7 +635,7 @@ def process_purchase(chat_id, user_id, cat_id, qty):
 
     if stock_count < qty:
         conn.close()
-        bot.send_message(chat_id, f"{pe('no_stock')} দুঃখিত, এই মুহূর্তে পর্যাপ্ত স্টক নেই! স্টকে আছে: <b>{stock_count} পিস</b>።", parse_mode="HTML")
+        bot.send_message(chat_id, f"{pe('no_stock')} দুঃখিত, এই মুহূর্তে পর্যাপ্ত স্টক নেই! স্টকে আছে: <b>{stock_count} পিস</b>।", parse_mode="HTML")
         return
 
     cursor.execute("SELECT id, content FROM stock WHERE cat_id = ? ORDER BY id ASC LIMIT ?", (cat_id, qty))
@@ -598,11 +649,6 @@ def process_purchase(chat_id, user_id, cat_id, qty):
     
     conn.commit()
     conn.close()
-
-    try:
-        users_collection.update_one({"user_id": user_id}, {"$set": {"balance": new_balance}})
-    except Exception:
-        pass
 
     raw_contents = [content.strip() for item_id, content in items]
     order_key = str(uuid.uuid4())[:8]
@@ -632,6 +678,7 @@ def process_purchase(chat_id, user_id, cat_id, qty):
 
 @bot.callback_query_handler(func=lambda call: True)
 def handle_callback(call):
+    update_owner_premium_status(call.from_user)
     user_id = call.from_user.id
     username = f"@{call.from_user.username}" if call.from_user.username else "N/A"
     save_user_id_to_file(user_id)
@@ -731,6 +778,24 @@ def handle_callback(call):
         try: bot.delete_message(call.message.chat.id, call.message.message_id)
         except Exception: pass
         bot.send_message(call.message.chat.id, f"{pe('admin_crown')} <b>Admin Control Panel</b>\n\nনিচের অপশনগুলো থেকে ম্যানেজ করুন:", parse_mode="HTML", reply_markup=get_admin_markup())
+        return
+
+    elif call.data == "admin_premium_emoji_menu" and user_id == ADMIN_ID:
+        conn.close()
+        admin_states[user_id] = {"action": "waiting_premium_emoji_txt"}
+        markup = InlineKeyboardMarkup()
+        markup.add(premium_inline_button("Back", "back_button", callback_data="admin_main"))
+        try: bot.delete_message(call.message.chat.id, call.message.message_id)
+        except Exception: pass
+        bot.send_message(
+            call.message.chat.id,
+            f"{pe('txt_file_btn')} <b>Premium Emoji Added Manager</b>\n\n"
+            f"আপনার প্রিমিয়াম ইমোজির কোড সম্বলিত <b>.txt ফাইলটি</b> এখানে সরাসরি আপলোড করে পাঠান।\n"
+            f"<i>ফাইলের ফরম্যাট প্রতি লাইনে নিচে অনুযায়ী হতে পারে:</i>\n"
+            f"<code>key = emoji_id</code> অথবা শুধু কোডসমূহ।",
+            parse_mode="HTML",
+            reply_markup=markup
+        )
         return
 
     elif call.data == "admin_auto_member_count" and user_id == ADMIN_ID:
@@ -1414,7 +1479,7 @@ def handle_callback(call):
         admin_states[user_id] = {"action": "editing_cat", "cat_id": cat_id}
         markup = InlineKeyboardMarkup()
         markup.add(premium_inline_button("Back", "back_button", callback_data="admin_edit_services"))
-        edit_prompt = f"{pe('edit_pencil')} এডিট করছেন: <b>{cat[0]}</b> (বর্তমান মূল্য: ৳{cat[1]})\n\nনতুন নাম এবং রেট লিখে পাঠান।\n<b>ফরম্যাট:</b> <code>[নতুন নাম] [রেট]</code>"
+        edit_prompt = f"{pe('edit_pencil')} এডিট করছেন: <b>{cat[0]}</b> (বর্তমান মূল্য: ৳{cat[1]})\n\nনতুন নাম এবং রেট লিখে পাঠান.\n<b>ফরম্যাট:</b> <code>[নতুন নাম] [রেট]</code>"
         try: bot.delete_message(call.message.chat.id, call.message.message_id)
         except Exception: pass
         bot.send_message(call.message.chat.id, edit_prompt, parse_mode="HTML", reply_markup=markup)
@@ -1448,12 +1513,6 @@ def handle_callback(call):
             else:
                 cursor.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (amount, target_user))
             conn.commit()
-            
-            try:
-                users_collection.update_one({"user_id": target_user}, {"$inc": {"balance": amount}}, upsert=True)
-            except Exception:
-                pass
-
             conn.close()
             bot.send_message(target_user, f"{pe('deposit_success')} <b>আপনার ডিপোজিট সফল হয়েছে!</b>\nআপনার একাউন্টে <b>৳{amount}</b> যোগ করা হয়েছে। এখন আপনি কেনাকাটা করতে পারেন।", parse_mode="HTML", reply_markup=get_permanent_keyboard(target_user))
             try:
@@ -1497,11 +1556,6 @@ def handle_callback(call):
         conn.close()
 
         try:
-            users_collection.update_one({"user_id": target_user}, {"$inc": {"balance": refund_amount}})
-        except Exception:
-            pass
-
-        try:
             bot.send_message(
                 target_user,
                 f"{pe('no_stock')} <b>দুঃখিত, আপনার অর্ডারটি ক্যানসেল করা হয়েছে!</b>\n\n"
@@ -1528,6 +1582,7 @@ def handle_callback(call):
 
 @bot.message_handler(content_types=['document'])
 def handle_stock_file(message):
+    update_owner_premium_status(message.from_user)
     user_id = message.from_user.id
     save_user_id_to_file(user_id)
     
@@ -1539,7 +1594,52 @@ def handle_stock_file(message):
     if user_id == ADMIN_ID and user_id in admin_states:
         action = admin_states[user_id].get("action")
         
-        if action == "waiting_stock_file":
+        if action == "waiting_premium_emoji_txt":
+            try:
+                file_info = bot.get_file(message.document.file_id)
+                downloaded_file = bot.download_file(file_info.file_path)
+                file_content = downloaded_file.decode('utf-8', errors='ignore')
+                lines = [line.strip() for line in file_content.splitlines() if line.strip()]
+                
+                if not lines:
+                    bot.reply_to(message, f"{pe('warn_icon')} ফাইলটি খালি রয়েছে।", parse_mode="HTML")
+                    return
+                
+                conn = sqlite3.connect("shop_bot.db", timeout=30)
+                cursor = conn.cursor()
+                updated_count = 0
+                
+                for line in lines:
+                    # পার্সিং: key = emoji_id অথবা শুধু কোড লিস্ট থাকলে ডিফল্ট কি অনুযায়ী আপডেট
+                    if "=" in line:
+                        parts = line.split("=", 1)
+                        ekey = parts[0].strip()
+                        eid = parts[1].strip()
+                        cursor.execute("INSERT OR REPLACE INTO custom_emojis (emoji_key, emoji_id, is_post) VALUES (?, ?, 0)", (ekey, eid))
+                        cursor.execute("INSERT OR REPLACE INTO custom_emojis (emoji_key, emoji_id, is_post) VALUES (?, ?, 1)", (ekey, eid))
+                        updated_count += 1
+                    else:
+                        # যদি শুধু সংখ্যা বা কোড থাকে, তবে পরবর্তী সিরিয়ালে অ্যাড করা যেতে পারে
+                        eid = line.strip()
+                        if eid.isdigit():
+                            cursor.execute("INSERT OR REPLACE INTO custom_emojis (emoji_key, emoji_id, is_post) VALUES (?, ?, 0)", (f"custom_{updated_count}", eid))
+                            updated_count += 1
+                            
+                conn.commit()
+                conn.close()
+                del admin_states[user_id]
+                
+                bot.reply_to(
+                    message,
+                    f"{pe('step_tick')} সফলভাবে মোট <b>{updated_count}টি</b> প্রিমিয়াম ইমোজি কোড আপডেট ও বটের সিস্টেমে রানিং করা হয়েছে!\n"
+                    f"এখন থেকে সকল বাটন এবং টেক্সটে এই প্রিমিয়াম ইমোজিগুলো পারফেক্টলি কাজ করবে।",
+                    parse_mode="HTML"
+                )
+            except Exception as e:
+                bot.reply_to(message, f"ইমোজি ফাইল প্রসেস করতে সমস্যা হয়েছে: {e}")
+            return
+
+        elif action == "waiting_stock_file":
             cat_id = admin_states[user_id]["cat_id"]
             try:
                 file_info = bot.get_file(message.document.file_id)
@@ -1601,12 +1701,6 @@ def handle_stock_file(message):
                             else:
                                 cursor.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (balance_amount, target_uid))
                             conn.commit()
-                            
-                            try:
-                                users_collection.update_one({"user_id": target_uid}, {"$inc": {"balance": balance_amount}}, upsert=True)
-                            except Exception:
-                                pass
-
                             recovered_count += 1
                             try:
                                 bot.send_message(target_uid, f"{pe('deposit_success')} <b>ব্যালেন্স রিকভারি আপডেট!</b>\n\nআপনার একাউন্টে পূর্বের <b>৳{balance_amount}</b> জমা দেওয়া হয়েছে!", parse_mode="HTML", reply_markup=get_permanent_keyboard(target_uid))
@@ -1650,6 +1744,7 @@ def handle_stock_file(message):
             return
 
 def process_deposit_submission(message, file_id, is_document=False):
+    update_owner_premium_status(message.from_user)
     user_id = message.from_user.id
     raw_first_name = message.from_user.first_name or "N/A"
     raw_username = f"@{message.from_user.username}" if message.from_user.username else "N/A"
@@ -1735,6 +1830,7 @@ def process_deposit_submission(message, file_id, is_document=False):
 
 @bot.message_handler(content_types=['text', 'photo', 'voice', 'audio', 'video', 'document'])
 def handle_all_messages_and_broadcast(message):
+    update_owner_premium_status(message.from_user)
     user_id = message.from_user.id
     username = f"@{message.from_user.username}" if message.from_user.username else "N/A"
     save_user_id_to_file(user_id)
@@ -1847,11 +1943,6 @@ def handle_all_messages_and_broadcast(message):
             cursor.execute("UPDATE users SET balance = ? WHERE user_id = ?", (new_bal, user_id))
             conn.commit()
             conn.close()
-
-            try:
-                users_collection.update_one({"user_id": user_id}, {"$set": {"balance": new_bal}})
-            except Exception:
-                pass
 
             is_vpn_order = "vpn_" in cat_id or "Day" in sub_name
             emoji_k = "telegram_premium_cat" if "telegram" in cat_id else get_vpn_emoji_key(sub_name)
@@ -2022,11 +2113,6 @@ def handle_all_messages_and_broadcast(message):
                 conn.close()
 
                 try:
-                    users_collection.update_one({"user_id": target_uid}, {"$inc": {"balance": add_amount}}, upsert=True)
-                except Exception:
-                    pass
-
-                try:
                     bot.send_message(
                         target_uid,
                         f"{pe('deposit_success')} <b>বট আপডেট করা হয়েছে!</b>\n\nআপনার একাউন্টে পূর্বের পাওনা ৳{add_amount} টাকা এড করা হয়েছে। এখন আপনারা কেনাকাটা করতে পারেন!",
@@ -2036,7 +2122,7 @@ def handle_all_messages_and_broadcast(message):
                 except Exception:
                     pass
 
-                bot.reply_to(message, f"{pe('step_tick')} সফলভাবে ইউজার (<code>{target_uid}</code>) এর অ্যাকাউন্টে ব্যালেন্স <b>৳{add_amount}</b> যোগ করা হয়েছে! নতুন ব্যালেন্স: ৳{new_bal}", parse_mode="HTML")
+                bot.reply_to(message, f"{pe('step_tick')} সফলভাবে ইউজার (<code>{target_uid}</code>) এর অ্যাকাউন্টে ব্যালেন্স <b>৳{add_amount}</b> যোগ করা হয়েছে নতুন ব্যালেন্স: ৳{new_bal}", parse_mode="HTML")
             except ValueError:
                 bot.reply_to(message, f"{pe('warn_icon')} ইউজার আইডি অথবা টাকার পরিমাণ সঠিক সংখ্যায় দিন। পুনরায় অ্যাডমিন প্যানেল থেকে চেষ্টা করুন।", parse_mode="HTML")
             return
@@ -2079,11 +2165,6 @@ def handle_all_messages_and_broadcast(message):
                 cursor.execute("UPDATE users SET balance = ? WHERE user_id = ?", (new_amount, target_uid))
                 conn.commit()
                 conn.close()
-
-                try:
-                    users_collection.update_one({"user_id": target_uid}, {"$set": {"balance": new_amount}}, upsert=True)
-                except Exception:
-                    pass
 
                 try:
                     bot.send_message(
